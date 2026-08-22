@@ -5115,6 +5115,13 @@
                 <p style="font-size:12px; color:#888; margin-top:8px;">Only Admin can change this. This is printed on every invoice (PDF, print, WhatsApp/Viber invoice message).</p>
               </div>
 
+              <h3 style="margin: 20px 0 12px; font-size: 14px; border-bottom: 2px solid #c0392b; padding-bottom: 8px; color:#c0392b;">🗑️ Clear Sales & Orders Data</h3>
+              <div style="max-width: 400px; margin-bottom: 24px; background:#fdecea; border:1px solid #f5c6c0; border-radius:8px; padding:16px;">
+                <p style="font-size:13px; color:#c0392b; font-weight:600; margin-bottom:8px;">⚠️ Yeh action undo nahi hogi!</p>
+                <p style="font-size:12px; color:#555; margin-bottom:12px;">Sirf Orders aur Sales history delete hogi. Products, Employees, Categories, Wastage sab safe rahega. Invoice counter bhi reset ho jayega.</p>
+                <button class="checkout-btn" style="background:#c0392b; width:auto; padding:10px 20px;" onclick="confirmClearSalesData()">🗑️ Clear All Orders & Sales</button>
+              </div>
+
               <h3 style="margin: 20px 0 12px; font-size: 14px; border-bottom: 2px solid #2d6d48; padding-bottom: 8px;">🔐 Login Security Settings</h3>
               <div style="max-width: 400px; margin-bottom: 24px;">
                 ${(() => {
@@ -5198,6 +5205,31 @@
           refundDeductionPercent = pct;
           localStorage.setItem('kharel_refund_deduction_pct', String(pct));
           alert(`✓ Refund deduction set to ${pct}%.`);
+          renderAdminSettings();
+        }
+
+        function confirmClearSalesData() {
+          if (!isAdmin()) return;
+          const pwd = prompt('⚠️ Yeh action undo nahi hogi!\n\nSirf Orders & Sales delete hongi.\nProducts, Employees, Categories safe rahenge.\n\nConfirm karne ke liye Admin password enter karo:');
+          if (pwd === null) return; // cancelled
+          const ok = Object.values(USERS).some(u => u.role === 'admin' && u.password === pwd);
+          if (!ok) { alert('❌ Galat password. Kuch delete nahi hua.'); return; }
+
+          if (!confirm('Last chance!\n\nKya aap sure hain? Saare orders aur sales records permanently delete ho jayenge.')) return;
+
+          // Clear orders
+          orders = [];
+          localStorage.setItem('kharel_orders', JSON.stringify([]));
+
+          // Reset invoice counter
+          invoiceCounter = 0;
+          localStorage.setItem('kharel_invoice_counter', '0');
+
+          // Clear stock movements related to sales
+          stockMovements = stockMovements.filter(m => m.reason && !m.reason.includes('Sale') && !m.reason.includes('Refund'));
+          saveStockMovements();
+
+          alert('✅ Saare orders aur sales delete ho gaye!\nInvoice counter bhi reset ho gaya.\nProducts, Employees, Categories safe hain.');
           renderAdminSettings();
         }
 
