@@ -708,10 +708,10 @@
         <button class="login-close" onclick="closeStaffLogin()">✕</button>
         <h1>🏗️ Kharel Nirmad Samagri Udhyog</h1>
         <div class="login-sub">Staff Login</div>
-        <div class="login-error" id="loginError">Invalid username or password</div>
+        <div class="login-error" id="loginError">Invalid username/email or password</div>
         <div style="margin-bottom: 15px;">
-          <label style="display: block; font-weight: 600; margin-bottom: 6px;">Username</label>
-          <input type="text" class="form-input" id="loginUsername" placeholder="Username" onkeydown="if(event.key==='Enter')attemptLogin()">
+          <label style="display: block; font-weight: 600; margin-bottom: 6px;">Username or Email</label>
+          <input type="text" class="form-input" id="loginUsername" placeholder="Username or Gmail address" onkeydown="if(event.key==='Enter')attemptLogin()">
         </div>
         <div style="margin-bottom: 20px;">
           <label style="display: block; font-weight: 600; margin-bottom: 6px;">Password</label>
@@ -1486,19 +1486,85 @@
         }
 
         function attemptLogin() {
-          const username = document.getElementById('loginUsername').value.trim();
+          const input = document.getElementById('loginUsername').value.trim();
           const password = document.getElementById('loginPassword').value;
-          const user = USERS[username];
 
-          if (!user || user.password !== password) {
+          const secSettings = JSON.parse(localStorage.getItem('kharel_security_settings') || '{}');
+
+          // Check if "require email login" is on
+          const isEmailInput = input.includes('@');
+          if (secSettings.requireEmailLogin && !isEmailInput) {
+            document.getElementById('loginError').textContent = '🔐 Security: Please login with your Gmail address, not username.';
             document.getElementById('loginError').classList.add('show');
             return;
           }
 
-          currentUser = { username, role: user.role, label: user.label, permissions: user.permissions };
+          // Try direct username match first
+          let matchedUsername = null;
+          let user = USERS[input];
+          if (user) {
+            matchedUsername = input;
+          } else {
+            // Try email match — check all users' gmail field
+            const emailLower = input.toLowerCase();
+            for (const [uname, u] of Object.entries(USERS)) {
+              if (u.gmail && u.gmail.toLowerCase() === emailLower) {
+                matchedUsername = uname;
+                user = u;
+                break;
+              }
+            }
+          }
+
+          // Check failed attempts lockout
+          if (matchedUsername && secSettings.maxFailedAttempts) {
+            const failKey = `kharel_fails_${matchedUsername}`;
+            const fails = parseInt(localStorage.getItem(failKey) || '0');
+            if (fails >= secSettings.maxFailedAttempts) {
+              document.getElementById('loginError').textContent = `🔒 Account locked after ${fails} failed attempts. Ask Admin to unlock.`;
+              document.getElementById('loginError').classList.add('show');
+              return;
+            }
+          }
+
+          if (!matchedUsername || !user || user.password !== password) {
+            // Record failure
+            if (matchedUsername && secSettings.maxFailedAttempts) {
+              const failKey = `kharel_fails_${matchedUsername}`;
+              const fails = parseInt(localStorage.getItem(failKey) || '0') + 1;
+              localStorage.setItem(failKey, String(fails));
+              if (fails >= secSettings.maxFailedAttempts) {
+                document.getElementById('loginError').textContent = `🔒 Account locked after ${fails} failed attempts. Ask Admin to unlock.`;
+                document.getElementById('loginError').classList.add('show');
+                return;
+              }
+            }
+            document.getElementById('loginError').textContent = 'Invalid username/email or password';
+            document.getElementById('loginError').classList.add('show');
+            return;
+          }
+
+          // Reset fail counter on successful login
+          if (secSettings.maxFailedAttempts) {
+            localStorage.removeItem(`kharel_fails_${matchedUsername}`);
+          }
+
+          currentUser = { username: matchedUsername, role: user.role, label: user.label, permissions: user.permissions };
           closeStaffLogin();
           updateTopBarForUser();
           renderProducts();
+        }
+
+        // Track failed login attempts for security
+        function recordFailedLogin(input) {
+          const secSettings = JSON.parse(localStorage.getItem('kharel_security_settings') || '{}');
+          if (!secSettings.maxFailedAttempts) return;
+          const failKey = `kharel_fails_${input}`;
+          const fails = parseInt(localStorage.getItem(failKey) || '0') + 1;
+          localStorage.setItem(failKey, String(fails));
+          if (fails >= (secSettings.maxFailedAttempts || 5)) {
+            document.getElementById('loginError').textContent = `Account locked after ${fails} failed attempts. Ask Admin to reset.`;
+          }
         }
 
         function openOtherItemModal() {
@@ -5048,6 +5114,45 @@
                 </div>
                 <p style="font-size:12px; color:#888; margin-top:8px;">Only Admin can change this. This is printed on every invoice (PDF, print, WhatsApp/Viber invoice message).</p>
               </div>
+
+              <h3 style="margin: 20px 0 12px; font-size: 14px; border-bottom: 2px solid #2d6d48; padding-bottom: 8px;">🔐 Login Security Settings</h3>
+              <div style="max-width: 400px; margin-bottom: 24px;">
+                ${(() => {
+                  const sec = JSON.parse(localStorage.getItem('kharel_security_settings') || '{}');
+                  return `
+                    <label style="display:block; font-weight:600; margin-bottom:6px;">Max Failed Login Attempts (before lockout)</label>
+                    <div style="display:flex; gap:10px; margin-bottom:12px;">
+                      <input type="number" class="form-input" id="secMaxFails" value="${sec.maxFailedAttempts || ''}" min="1" max="20" placeholder="e.g. 5 (blank = no lockout)">
+                      <button class="checkout-btn" style="width:auto; padding:10px 16px;" onclick="adminSaveSecuritySettings()">💾 Save</button>
+                    </div>
+                    <p style="font-size:12px; color:#888; margin-bottom:12px;">After this many wrong password attempts in a row, that username gets locked. Only a correct login resets the counter. Leave blank to disable lockout.</p>
+
+                    <label style="display:block; font-weight:600; margin-bottom:6px;">Session Timeout (minutes of inactivity)</label>
+                    <div style="display:flex; gap:10px; margin-bottom:12px;">
+                      <input type="number" class="form-input" id="secTimeout" value="${sec.sessionTimeoutMinutes || ''}" min="1" placeholder="e.g. 30 (blank = never)">
+                      <button class="checkout-btn" style="width:auto; padding:10px 16px;" onclick="adminSaveSecuritySettings()">💾 Save</button>
+                    </div>
+                    <p style="font-size:12px; color:#888; margin-bottom:12px;">Staff will be automatically logged out after this many minutes of no activity. Leave blank to disable auto-logout.</p>
+
+                    <label style="display:flex; align-items:center; gap:8px; font-size:13px; cursor:pointer; margin-bottom:12px;">
+                      <input type="checkbox" id="secRequireEmailLogin" ${sec.requireEmailLogin ? 'checked' : ''} onchange="adminSaveSecuritySettings()">
+                      <span><strong>Require Gmail/Email to login</strong> — staff must use their registered Gmail address (not just username)</span>
+                    </label>
+
+                    ${sec.maxFailedAttempts ? `
+                    <div style="background:#fff3e0; border:1px solid #ffe0b2; border-radius:6px; padding:12px; margin-top:8px;">
+                      <div style="font-size:13px; font-weight:600; color:#e65100; margin-bottom:8px;">🔓 Unlock a Locked Account</div>
+                      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                        <select class="form-input" id="secUnlockUser" style="max-width:200px;">
+                          ${Object.keys(USERS).map(u => `<option value="${escapeAttr(u)}">${escapeAttr(u)}</option>`).join('')}
+                        </select>
+                        <button class="checkout-btn" style="width:auto; padding:8px 12px; background:#e65100;" onclick="adminUnlockAccount()">🔓 Unlock</button>
+                      </div>
+                    </div>
+                    ` : ''}
+                  `;
+                })()}
+              </div>
             </div>
           `;
           document.getElementById('adminContent').innerHTML = html;
@@ -5095,6 +5200,69 @@
           alert(`✓ Refund deduction set to ${pct}%.`);
           renderAdminSettings();
         }
+
+        function adminSaveSecuritySettings() {
+          if (!isAdmin()) return;
+          const maxFailsEl = document.getElementById('secMaxFails');
+          const timeoutEl = document.getElementById('secTimeout');
+          const requireEmailEl = document.getElementById('secRequireEmailLogin');
+          const maxFails = maxFailsEl ? parseInt(maxFailsEl.value) || 0 : 0;
+          const timeout = timeoutEl ? parseInt(timeoutEl.value) || 0 : 0;
+          const requireEmail = requireEmailEl ? requireEmailEl.checked : false;
+          const sec = {};
+          if (maxFails > 0) sec.maxFailedAttempts = maxFails;
+          if (timeout > 0) sec.sessionTimeoutMinutes = timeout;
+          if (requireEmail) sec.requireEmailLogin = true;
+          localStorage.setItem('kharel_security_settings', JSON.stringify(sec));
+          // Apply session timeout if set
+          if (timeout > 0) startSessionTimer(timeout);
+          alert('✓ Security settings saved.');
+          renderAdminSettings();
+        }
+
+        function adminUnlockAccount() {
+          if (!isAdmin()) return;
+          const el = document.getElementById('secUnlockUser');
+          const username = el ? el.value : '';
+          if (!username) return;
+          localStorage.removeItem(`kharel_fails_${username}`);
+          alert(`✓ Account "${username}" unlocked. They can now login again.`);
+        }
+
+        // Session timeout: auto-logout after N minutes of inactivity
+        let sessionTimerHandle = null;
+        let lastActivityTime = Date.now();
+
+        function startSessionTimer(minutes) {
+          clearTimeout(sessionTimerHandle);
+          const ms = minutes * 60 * 1000;
+          document.addEventListener('click', resetSessionTimer, { passive: true });
+          document.addEventListener('keydown', resetSessionTimer, { passive: true });
+          sessionTimerHandle = setTimeout(autoSessionLogout, ms);
+        }
+
+        function resetSessionTimer() {
+          lastActivityTime = Date.now();
+          const sec = JSON.parse(localStorage.getItem('kharel_security_settings') || '{}');
+          if (!sec.sessionTimeoutMinutes) return;
+          clearTimeout(sessionTimerHandle);
+          sessionTimerHandle = setTimeout(autoSessionLogout, sec.sessionTimeoutMinutes * 60 * 1000);
+        }
+
+        function autoSessionLogout() {
+          if (currentUser && isStaff()) {
+            currentUser = null;
+            updateTopBarForUser();
+            renderProducts();
+            alert('⏰ You were automatically logged out due to inactivity.');
+          }
+        }
+
+        // Init session timer on load if setting exists
+        (function() {
+          const sec = JSON.parse(localStorage.getItem('kharel_security_settings') || '{}');
+          if (sec.sessionTimeoutMinutes) startSessionTimer(sec.sessionTimeoutMinutes);
+        })();
 
         // ---------- Employees & Admin management (Admin only) ----------
 
@@ -5263,6 +5431,8 @@
                 <input type="text" class="form-input" id="newUserUsername" placeholder="e.g. ramesh" style="margin-bottom:12px;">
                 <label style="display:block; font-weight:600; margin-bottom:6px;">Employee ID (optional — auto-generated if left blank)</label>
                 <input type="text" class="form-input" id="newUserEmployeeId" placeholder="e.g. EMP004" style="margin-bottom:12px;">
+                <label style="display:block; font-weight:600; margin-bottom:6px;">Gmail Address (optional — employee can use this to login)</label>
+                <input type="email" class="form-input" id="newUserGmail" placeholder="e.g. ramesh@gmail.com" style="margin-bottom:12px;">
                 <label style="display:block; font-weight:600; margin-bottom:6px;">Password</label>
                 <input type="text" class="form-input" id="newUserPassword" placeholder="Set a password" style="margin-bottom:12px;">
                 <label style="display:block; font-weight:600; margin-bottom:6px;">Role</label>
@@ -5338,6 +5508,12 @@
                   </div>
                 </div>
                 <div style="font-size:12px; color:#888; margin-top:6px;">Current password: <strong style="color:#333;">${escapeAttr(u.password)}</strong> (only Admin can see this)</div>
+                <div style="margin-top:10px; display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                  <span style="font-size:12px; font-weight:600; color:#555;">📧 Gmail:</span>
+                  <input type="email" class="form-input" id="empGmail-${escapeAttr(username)}" value="${escapeAttr(u.gmail || '')}" placeholder="e.g. ramesh@gmail.com" style="max-width:260px; padding:6px 10px; font-size:12px;">
+                  <button style="background:#2d6d48; color:white; border:none; padding:6px 12px; border-radius:4px; cursor:pointer; font-size:11px;" onclick="saveEmployeeGmail('${escapeAttr(username)}')">💾 Save Gmail</button>
+                  ${u.gmail ? `<span style="font-size:11px; color:#1a472a;">✅ Can login with email</span>` : `<span style="font-size:11px; color:#aaa;">Not set — employee can only login with username</span>`}
+                </div>
 
                 ${isEmp ? `
                 <div style="margin-top:12px; padding-top:12px; border-top: 1px dashed #eee; display:flex; gap:16px; flex-wrap:wrap;">
@@ -5624,11 +5800,19 @@
             alert('That Employee ID is already in use'); return;
           }
 
+          const gmailEl = document.getElementById('newUserGmail');
+          const gmail = gmailEl ? gmailEl.value.trim().toLowerCase() : '';
+          // Check if gmail already used by another user
+          if (gmail && Object.values(USERS).some(u => u.gmail && u.gmail.toLowerCase() === gmail)) {
+            alert('That Gmail address is already linked to another account.'); return;
+          }
+
           const newUser = {
             password,
             role,
             label: role === 'admin' ? 'Admin' : 'Employee',
-            employeeId
+            employeeId,
+            gmail: gmail || ''
           };
           if (role === 'employee') {
             newUser.permissions = {
@@ -5638,7 +5822,23 @@
           }
           USERS[username] = newUser;
           saveUsers();
-          alert(`✓ ${role === 'admin' ? 'Admin' : 'Employee'} account "${username}" created.`);
+          alert(`✓ ${role === 'admin' ? 'Admin' : 'Employee'} account "${username}" created.${gmail ? `\nThey can now login with: ${gmail}` : ''}`);
+          renderAdminUsers();
+        }
+
+        function saveEmployeeGmail(username) {
+          if (!isAdmin()) return;
+          const u = USERS[username];
+          if (!u) return;
+          const el = document.getElementById(`empGmail-${username}`);
+          const gmail = el ? el.value.trim().toLowerCase() : '';
+          // Check duplicate
+          if (gmail && Object.entries(USERS).some(([uname, usr]) => uname !== username && usr.gmail && usr.gmail.toLowerCase() === gmail)) {
+            alert('That Gmail is already linked to another account.'); return;
+          }
+          u.gmail = gmail;
+          saveUsers();
+          alert(gmail ? `✓ Gmail saved! ${username} can now login with: ${gmail}` : `✓ Gmail removed for ${username}.`);
           renderAdminUsers();
         }
 
