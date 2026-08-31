@@ -700,6 +700,104 @@
           #printArea { display: block !important; }
           #printArea .invoice { box-shadow: none; padding: 0; max-width: 100%; }
         }
+    <style>
+        /* ===================== Home Hero / Category Redesign ===================== */
+        .promo-strip { background: linear-gradient(90deg,#c0392b,#1a472a); color:#fff; text-align:center; font-size:12px; padding:6px 10px; }
+        .hero-banner {
+          background: linear-gradient(135deg,#c0392b 0%,#e67e22 100%);
+          color:#fff; border-radius:10px; padding:34px 20px; text-align:center;
+          margin: 14px 0 16px; position:relative; overflow:hidden;
+        }
+        .hero-tagline { letter-spacing:3px; font-size:12px; opacity:.9; font-weight:600; }
+        .hero-headline { font-size:34px; font-weight:800; margin:8px 0 4px; }
+        .hero-headline span { color:#fff59d; }
+        .hero-sub { font-size:14px; opacity:.95; margin-bottom:16px; }
+        .hero-btn-row { display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-bottom:18px; }
+        .hero-btn { border:none; border-radius:24px; padding:10px 22px; font-weight:700; cursor:pointer; font-size:13px; }
+        .hero-btn.primary { background:#fff; color:#c0392b; }
+        .hero-btn.secondary { background:rgba(255,255,255,0.18); color:#fff; border:1px solid rgba(255,255,255,0.7); }
+        .hero-feats { display:flex; gap:22px; justify-content:center; flex-wrap:wrap; font-size:11px; opacity:.95; }
+        .hero-feats div { display:flex; flex-direction:column; align-items:center; gap:4px; }
+        .hero-feats .fi { font-size:18px; }
+        .hot-deals-bar {
+          background:#c0392b; color:#fff; font-size:12px; padding:8px 14px; border-radius:6px;
+          margin-bottom:16px; white-space:nowrap; overflow:hidden; position:relative;
+        }
+        .hot-deals-bar span { display:inline-block; padding-right:60px; animation: hd-scroll 22s linear infinite; }
+        @keyframes hd-scroll { 0%{ transform:translateX(0);} 100%{ transform:translateX(-100%);} }
+        .cat-chip-row { display:flex; gap:8px; overflow-x:auto; padding-bottom:8px; margin-bottom:10px; }
+        .cat-chip {
+          flex:0 0 auto; padding:7px 16px; border-radius:20px; border:1px solid #ddd; background:#fff;
+          cursor:pointer; font-size:13px; font-weight:600; color:#444; white-space:nowrap;
+        }
+        .cat-chip.active { background:#1a472a; color:#fff; border-color:#1a472a; }
+        .cat-tile-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(96px,1fr)); gap:12px; margin-bottom:22px; }
+        .cat-tile {
+          background:#fff; border:1px solid #eee; border-radius:10px; padding:14px 6px; text-align:center;
+          cursor:pointer; transition:all .2s; font-size:12px; font-weight:600; color:#333;
+        }
+        .cat-tile:hover { box-shadow:0 4px 12px rgba(0,0,0,0.08); transform:translateY(-2px); border-color:#e67e22; }
+        .cat-tile .ci { font-size:26px; display:block; margin-bottom:6px; }
+        .section-title { color:#1a472a; font-weight:700; font-size:16px; margin:6px 0 10px; }
+
+        /* ===================== Buy Now button ===================== */
+        .buy-now-btn {
+          width:100%; margin-top:8px; padding:10px; border:none; border-radius:6px; background:#e67e22;
+          color:#fff; font-weight:700; cursor:pointer; font-size:14px;
+        }
+        .buy-now-btn:hover { background:#d35400; }
+
+        /* ===================== Product Detail Page ===================== */
+        .pd-overlay { position:fixed; inset:0; background:#f4f5f7; z-index:1200; overflow-y:auto; }
+        .pd-wrap { max-width:1100px; margin:0 auto; padding:16px; }
+        .pd-back { color:#c0392b; font-weight:700; cursor:pointer; display:inline-block; margin-bottom:12px; font-size:14px; }
+        .pd-card { background:#fff; border-radius:10px; padding:20px; display:grid; grid-template-columns:1fr 1fr; gap:24px; }
+        @media (max-width:760px) { .pd-card { grid-template-columns:1fr; } }
+        .pd-stage { width:100%; background:#f4f4f4; border-radius:8px; min-height:260px; max-height:420px; display:flex; align-items:center; justify-content:center; overflow:hidden; }
+        .pd-stage img, .pd-stage video { max-width:100%; max-height:420px; object-fit:contain; }
+        .pd-cat { color:#e67e22; font-size:12px; font-weight:700; text-transform:uppercase; }
+        .pd-name { font-size:22px; font-weight:800; color:#222; margin:4px 0 8px; }
+        .pd-price-row { display:flex; align-items:baseline; gap:10px; margin-bottom:6px; }
+        .pd-price { font-size:26px; font-weight:800; color:#c0392b; }
+        .pd-price-old { font-size:15px; color:#999; text-decoration:line-through; }
+        .pd-off { background:#fdecea; color:#c0392b; font-size:11px; font-weight:700; padding:2px 8px; border-radius:10px; }
+        .pd-stars { color:#f39c12; font-size:14px; }
+        .pd-badges { display:flex; gap:8px; flex-wrap:wrap; margin:10px 0; }
+        .pd-badge { font-size:11px; font-weight:700; padding:4px 9px; border-radius:12px; }
+        .pd-badge.stock { background:#e8f5e9; color:#1a472a; }
+        .pd-badge.oos { background:#fdecea; color:#c0392b; }
+        .pd-badge.warranty { background:#e3f2fd; color:#1565c0; }
+        .pd-actions { display:flex; gap:8px; flex-wrap:wrap; margin:14px 0; }
+        .pd-btn { border:none; border-radius:6px; padding:10px 18px; font-weight:700; cursor:pointer; font-size:13px; }
+        .pd-btn.cart { background:#c0392b; color:#fff; }
+        .pd-btn.buy { background:#e67e22; color:#fff; }
+        .pd-btn.compare { background:#fff; color:#1565c0; border:1px solid #1565c0; }
+        .pd-btn.review { background:#fff; color:#e67e22; border:1px solid #e67e22; }
+        .pd-section { background:#fff; border-radius:10px; padding:20px; margin-top:16px; }
+        .pd-review-item { border-top:1px solid #eee; padding:10px 0; font-size:13px; }
+        .related-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:12px; }
+        .related-card { background:#fff; border:1px solid #eee; border-radius:8px; padding:8px; cursor:pointer; font-size:12px; }
+        .related-card img, .related-card .ric { width:100%; height:90px; object-fit:cover; border-radius:6px; background:#f4f4f4; display:flex; align-items:center; justify-content:center; font-size:34px; }
+
+        /* ===================== AI Chatbot widget ===================== */
+        .chat-box { border:1px solid #eee; border-radius:10px; overflow:hidden; }
+        .chat-header { background:#1a472a; color:#fff; padding:10px 14px; font-weight:700; font-size:13px; display:flex; align-items:center; gap:6px; }
+        .chat-msgs { height:260px; overflow-y:auto; padding:12px; background:#fafafa; display:flex; flex-direction:column; gap:8px; }
+        .chat-msg { max-width:78%; padding:8px 12px; border-radius:12px; font-size:13px; line-height:1.4; }
+        .chat-msg.bot { background:#e8f5e9; color:#1a472a; align-self:flex-start; border-bottom-left-radius:2px; }
+        .chat-msg.user { background:#1565c0; color:#fff; align-self:flex-end; border-bottom-right-radius:2px; }
+        .chat-quick { display:flex; gap:6px; flex-wrap:wrap; padding:0 12px 8px; }
+        .chat-quick button { font-size:11px; border:1px solid #ddd; background:#fff; border-radius:14px; padding:5px 10px; cursor:pointer; }
+        .chat-input-row { display:flex; gap:6px; padding:10px; border-top:1px solid #eee; }
+        .chat-input-row input { flex:1; border:1px solid #ddd; border-radius:20px; padding:8px 14px; font-size:13px; }
+        .chat-input-row button { background:#1a472a; color:#fff; border:none; border-radius:20px; padding:8px 16px; font-weight:700; cursor:pointer; font-size:12px; }
+        .chat-wa-btn { display:inline-flex; align-items:center; gap:6px; background:#25D366; color:#fff; border:none; border-radius:16px; padding:6px 12px; font-size:12px; font-weight:700; cursor:pointer; margin-top:6px; margin-right:6px; }
+
+        /* ===================== QR payment tiles ===================== */
+        .qr-tile-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(100px,1fr)); gap:10px; margin-bottom:16px; }
+        .qr-tile { border:2px solid #eee; border-radius:8px; padding:8px; text-align:center; cursor:pointer; font-size:12px; font-weight:600; }
+        .qr-tile.selected { border-color:#2d6d48; background:#f0f8f5; }
+        .qr-tile img { width:100%; height:70px; object-fit:contain; margin-bottom:6px; }
     </style>
 </head>
 <body>
@@ -787,6 +885,7 @@
 
       <!-- Products Tab -->
       <div id="products" class="tab-content active">
+        <div id="homeHeroSection"></div>
         <div class="search-section">
           <input type="text" class="search-input" id="searchInput" placeholder="Search products..." onkeyup="searchProducts()">
           <select class="filter-select" id="categoryFilter" onchange="filterByCategory()">
@@ -883,10 +982,60 @@
         function savePhoneNumber() {
           localStorage.setItem('kharel_whatsapp_number', PHONE);
         }
+        // Separate WhatsApp number for "talk to staff" (from the AI chat widget) - falls back
+        // to the same Admin number above if Admin hasn't set a dedicated staff number.
+        let STAFF_PHONE = localStorage.getItem('kharel_staff_whatsapp_number') || '';
+        function saveStaffPhoneNumber() {
+          localStorage.setItem('kharel_staff_whatsapp_number', STAFF_PHONE);
+        }
         // PAN number printed on every invoice. Admin can change this from Admin Dashboard > Settings.
         let PAN_NUMBER = localStorage.getItem('kharel_pan_number') || "611232825";
         function savePANNumber() {
           localStorage.setItem('kharel_pan_number', PAN_NUMBER);
+        }
+        // Trust-badge popup messages (Delivery Available, Trusted Quality, Bulk Orders Welcome,
+        // Easy Returns, Warranty) shown on the home page hero. Admin can edit each message from
+        // Admin Dashboard > Settings; clicking a badge shows that message to the customer.
+        const HERO_FEAT_DEFAULTS = {
+          delivery: { icon: '🚚', label: 'Delivery Available', message: 'Yes, we deliver! Once your order is confirmed, our team will call you to arrange delivery timing and cost.' },
+          quality: { icon: '🛠️', label: 'Trusted Quality', message: 'All our products are sourced from trusted manufacturers and checked for quality before they reach you.' },
+          bulk: { icon: '📦', label: 'Bulk Orders Welcome', message: 'Buying in bulk for a project or contract? Contact us for special bulk pricing and priority delivery.' },
+          returns: { icon: '↩️', label: 'Easy Returns', message: "Not satisfied? Contact us with your invoice number within a few days and we'll help with a return, exchange or refund." },
+          warranty: { icon: '🛡️', label: 'Warranty on Select Items', message: 'Select items come with a manufacturer warranty. Check the product page or ask our staff for details.' }
+        };
+        function loadHeroFeatMessages() {
+          try {
+            const saved = JSON.parse(localStorage.getItem('kharel_hero_feat_messages') || '{}');
+            const merged = {};
+            Object.keys(HERO_FEAT_DEFAULTS).forEach(k => {
+              merged[k] = { ...HERO_FEAT_DEFAULTS[k], ...(saved[k] || {}) };
+            });
+            return merged;
+          } catch (e) { return JSON.parse(JSON.stringify(HERO_FEAT_DEFAULTS)); }
+        }
+        let HERO_FEATS = loadHeroFeatMessages();
+        function saveHeroFeatMessages() {
+          localStorage.setItem('kharel_hero_feat_messages', JSON.stringify(HERO_FEATS));
+        }
+        function showHeroFeatMessage(key) {
+          const f = HERO_FEATS[key];
+          if (!f) return;
+          const existing = document.getElementById('heroFeatOverlay');
+          if (existing) existing.remove();
+          const overlay = document.createElement('div');
+          overlay.className = 'modal-overlay';
+          overlay.id = 'heroFeatOverlay';
+          overlay.onclick = function (e) { if (e.target === overlay) overlay.remove(); };
+          overlay.innerHTML = `
+            <div class="modal-content" style="max-width:400px; width:90%; padding:20px;">
+              <div class="modal-header">
+                <span>${f.icon} ${escapeHtml(f.label)}</span>
+                <button class="close-modal" onclick="this.closest('.modal-overlay').remove()">×</button>
+              </div>
+              <p style="font-size:14px; color:#333; line-height:1.5; margin-top:12px;">${escapeHtml(f.message)}</p>
+            </div>
+          `;
+          document.body.appendChild(overlay);
         }
         function applyContactPhoneUI() {
           const link = document.getElementById('contactPhoneLink');
@@ -1275,27 +1424,42 @@
         // password. This lets staff go back and record a sale/wastage for an older day
         // (e.g. after End of Day was already done for it), or get ahead and pre-record for
         // a future day, without permanently changing what "today" means for the shop.
-        // Local-timezone YYYY-MM-DD for any given Date (defaults to now). Using this instead
-        // of toISOString() avoids a "shows yesterday" bug late at night, since toISOString()
-        // converts to UTC first, which is behind local time in Nepal (and most timezones).
+        // Nepal Standard Time is UTC+5:45 (fixed offset, no DST).
+        // We always compute dates in Nepal time so that midnight here (not the
+        // device's local midnight) triggers End-of-Day, regardless of where the
+        // device is physically located or what its system timezone is set to.
+        const NEPAL_OFFSET_MS = (5 * 60 + 45) * 60 * 1000; // 20700000 ms
+
+        function nepalNow() {
+          // Returns a Date object whose .getFullYear()/.getMonth()/.getDate()
+          // etc. values reflect the current Nepal wall-clock time.
+          const utcMs = Date.now();
+          return new Date(utcMs + NEPAL_OFFSET_MS);
+        }
+
+        // Nepal-timezone YYYY-MM-DD for any given Date (defaults to now).
+        // Always uses Nepal time, never the device's local timezone, so the
+        // "shows yesterday" bug cannot occur and day-end fires at Nepal midnight.
         function localDateStr(d) {
-          d = d || new Date();
-          const year = d.getFullYear();
-          const month = String(d.getMonth() + 1).padStart(2, '0');
-          const day = String(d.getDate()).padStart(2, '0');
+          // If a specific Date was passed treat it as already Nepal-local;
+          // if nothing was passed, compute Nepal-now from UTC.
+          const nd = d ? d : nepalNow();
+          const year = nd.getFullYear();
+          const month = String(nd.getMonth() + 1).padStart(2, '0');
+          const day = String(nd.getDate()).padStart(2, '0');
           return `${year}-${month}-${day}`;
         }
 
-        // Local-timezone YYYY-MM for any given Date (defaults to now).
+        // Nepal-timezone YYYY-MM for any given Date (defaults to now).
         function localMonthStr(d) {
-          d = d || new Date();
-          const year = d.getFullYear();
-          const month = String(d.getMonth() + 1).padStart(2, '0');
+          const nd = d ? d : nepalNow();
+          const year = nd.getFullYear();
+          const month = String(nd.getMonth() + 1).padStart(2, '0');
           return `${year}-${month}`;
         }
 
         function realTodayStr() {
-          return localDateStr();
+          return localDateStr(); // always Nepal date
         }
         let workingDate = realTodayStr();
         function isWorkingDateToday() {
@@ -1723,7 +1887,76 @@
           return sorted;
         }
 
+        // ---------- Home Hero (banner + shop-by-category), styled after the reference design ----------
+        function distinctCategoriesWithIcons() {
+          const map = {};
+          products.forEach(p => {
+            if (!p.category) return;
+            if (!map[p.category]) map[p.category] = p.icon || '📦';
+          });
+          return Object.keys(map).map(cat => ({ category: cat, icon: map[cat] }));
+        }
+
+        function hotDealsText() {
+          const onPromo = products.filter(isOnPromotion);
+          if (onPromo.length) {
+            const parts = onPromo.slice(0, 6).map(p => `${p.name} at Rs ${getEffectivePrice(p).toLocaleString()} (${p.promotion.discountPercent}% off)`);
+            return `🔥 HOT DEALS  •  ${parts.join('   •   ')}   •   Free delivery on bulk orders`;
+          }
+          return `🔥 Quality building materials at the best rates  •  Free delivery on bulk orders  •  Trusted by local contractors`;
+        }
+
+        function renderHomeHero() {
+          const el = document.getElementById('homeHeroSection');
+          if (!el) return;
+          const cats = distinctCategoriesWithIcons();
+          const catChips = ['<div class="cat-chip active" onclick="heroFilterCategory(\'\', this)">All</div>']
+            .concat(cats.map(c => `<div class="cat-chip" onclick="heroFilterCategory('${escapeAttr(c.category)}', this)">${c.icon} ${escapeHtml(c.category)}</div>`))
+            .join('');
+          const catTiles = cats.map(c => `
+            <div class="cat-tile" onclick="heroFilterCategory('${escapeAttr(c.category)}')">
+              <span class="ci">${c.icon}</span>${escapeHtml(c.category)}
+            </div>
+          `).join('');
+
+          el.innerHTML = `
+            <div class="hero-banner">
+              <div class="hero-tagline">QUALITY MATERIALS · FAIR PRICES</div>
+              <div class="hero-headline">Built to <span>Last</span></div>
+              <div class="hero-sub">Doors, Windows, Cement &amp; everything for your construction</div>
+              <div class="hero-btn-row">
+                <button class="hero-btn primary" onclick="document.getElementById('searchInput').scrollIntoView({behavior:'smooth'})">Shop Now</button>
+                <button class="hero-btn secondary" onclick="switchTab('cart')">View Cart</button>
+              </div>
+              <div class="hero-feats">
+                <div onclick="showHeroFeatMessage('delivery')" style="cursor:pointer;"><span class="fi">🚚</span>Delivery Available</div>
+                <div onclick="showHeroFeatMessage('quality')" style="cursor:pointer;"><span class="fi">🛠️</span>Trusted Quality</div>
+                <div onclick="showHeroFeatMessage('bulk')" style="cursor:pointer;"><span class="fi">📦</span>Bulk Orders Welcome</div>
+                <div onclick="showHeroFeatMessage('returns')" style="cursor:pointer;"><span class="fi">↩️</span>Easy Returns</div>
+                <div onclick="showHeroFeatMessage('warranty')" style="cursor:pointer;"><span class="fi">🛡️</span>Warranty on Select Items</div>
+              </div>
+            </div>
+            <div class="hot-deals-bar"><span>${escapeHtml(hotDealsText())}</span></div>
+            <div class="cat-chip-row" id="catChipRow">${catChips}</div>
+            ${cats.length ? `<div class="section-title">🛍️ Shop by Category</div><div class="cat-tile-grid">${catTiles}</div>` : ''}
+          `;
+        }
+
+        function heroFilterCategory(cat, chipEl) {
+          const filterEl = document.getElementById('categoryFilter');
+          if (filterEl) filterEl.value = cat;
+          filterByCategory();
+          document.querySelectorAll('.cat-chip').forEach(c => c.classList.remove('active'));
+          if (chipEl) chipEl.classList.add('active');
+          else {
+            const row = document.getElementById('catChipRow');
+            if (row && row.firstElementChild) row.firstElementChild.classList.add('active');
+          }
+          document.getElementById('homeHeroSection').scrollIntoView({ behavior: 'smooth' });
+        }
+
         function renderProducts() {
+          renderHomeHero();
           const displayList = sortProductList(filteredProducts);
           const html = displayList.map(p => {
             const stock = p.stock || 0;
@@ -1756,7 +1989,8 @@
                     <input type="number" class="qty-input" id="qty-${p.id}" value="1" min="1" max="${stock}" ${outOfStock ? 'disabled' : ''}>
                     <button class="qty-btn" onclick="changeQty(${p.id}, 1)" ${outOfStock ? 'disabled' : ''}>+</button>
                   </div>
-                  <button class="add-btn" onclick="addToCart(${p.id})" ${outOfStock ? 'disabled style="background:#ccc; cursor:not-allowed;"' : ''}>${outOfStock ? 'Out of Stock' : 'Add to Cart'}</button>
+                  <button class="add-btn" onclick="addToCart(${p.id})" ${outOfStock ? 'disabled style="background:#ccc; cursor:not-allowed;"' : ''}>${outOfStock ? 'Out of Stock' : '🛒 Add to Cart'}</button>
+                  ${!outOfStock ? `<button class="buy-now-btn" onclick="buyNow(${p.id})">⚡ Buy Now</button>` : ''}
                 </div>
               </div>
             `;
@@ -1843,17 +2077,18 @@
           input.value = newVal;
         }
 
-        function addToCart(id) {
+        function addToCart(id, silent, explicitQty) {
           const product = products.find(p => p.id === id);
-          if (!product) return;
+          if (!product) return false;
           if ((product.stock || 0) <= 0) {
-            alert('This item is currently out of stock.');
-            return;
+            if (!silent) alert('This item is currently out of stock.');
+            return false;
           }
-          let qty = parseInt(document.getElementById(`qty-${id}`).value) || 1;
+          const qtyInput = document.getElementById(`qty-${id}`);
+          let qty = explicitQty || (qtyInput ? (parseInt(qtyInput.value) || 1) : 1);
           if (qty > product.stock) {
             qty = product.stock;
-            alert(`Only ${product.stock} in stock. Quantity adjusted.`);
+            if (!silent) alert(`Only ${product.stock} in stock. Quantity adjusted.`);
           }
 
           // Price always comes from the admin-set catalog price (or the admin-set
@@ -1870,7 +2105,46 @@
           }
 
           updateBadges();
-          alert('✓ Added to cart!');
+          if (!silent) alert('✓ Added to cart!');
+          return true;
+        }
+
+        // "Buy Now" - adds the item to the cart (same as Add to Cart) and jumps straight
+        // to Checkout so the customer can pay right away, without an extra click into the cart.
+        function buyNow(id) {
+          const ok = addToCart(id, true);
+          if (!ok) return;
+          switchTab('checkout');
+        }
+
+        // ----- Quantity/Add-to-Cart/Buy-Now helpers for the full-page Product Detail view -----
+        // (kept separate from the grid card's qty-${id} controls above, since both the grid
+        // and the product detail overlay can exist in the page at the same time.)
+        function pdChangeQty(id, delta) {
+          const product = products.find(p => p.id === id);
+          const maxStock = product ? (product.stock || 0) : 999;
+          const input = document.getElementById(`pdQty-${id}`);
+          if (!input) return;
+          let newVal = Math.max(1, parseInt(input.value) + delta);
+          if (maxStock > 0) newVal = Math.min(newVal, maxStock);
+          input.value = newVal;
+        }
+
+        function pdQtyValue(id) {
+          const input = document.getElementById(`pdQty-${id}`);
+          return input ? (parseInt(input.value) || 1) : 1;
+        }
+
+        function pdAddToCart(id) {
+          addToCart(id, false, pdQtyValue(id));
+        }
+
+        function pdBuyNow(id) {
+          const ok = addToCart(id, true, pdQtyValue(id));
+          if (!ok) return;
+          const overlay = document.getElementById('productViewerOverlay');
+          if (overlay) overlay.remove();
+          switchTab('checkout');
         }
 
         function updateBadges() {
@@ -2209,36 +2483,58 @@
               </div>
             `;
           } else if (method === 'wallet') {
+            selectedWalletQRId = (walletQRs.find(w => w.id === selectedWalletQRId)) ? selectedWalletQRId : (walletQRs[0] ? walletQRs[0].id : null);
             paymentContent = `
               <div style="background: white; border-radius: 8px; padding: 30px;">
                 <h2 style="color: #1a472a; margin-bottom: 10px;">📱 Digital Wallet Payment</h2>
                 <p style="color: #666; margin-bottom: 20px;">Amount to Pay: <strong>Rs ${total.toLocaleString()}</strong></p>
-
-                <div style="margin-bottom: 15px;">
-                  <label style="display: block; font-weight: 600; margin-bottom: 6px;">Choose Wallet</label>
-                  <select class="form-input" id="walletProvider">
-                    <option value="esewa">eSewa</option>
-                    <option value="khalti">Khalti</option>
-                    <option value="ime_connect">IME Connect</option>
-                    <option value="connectips">ConnectIPS</option>
-                    <option value="prabhupay">Prabhu Pay</option>
-                    <option value="nepalpay">NepalPay</option>
-                    <option value="other">Other</option>
-                  </select>
-                </div>
-
-                <div style="margin-bottom: 15px;">
-                  <label style="display: block; font-weight: 600; margin-bottom: 6px;">Transaction / Reference ID (optional)</label>
+                ${walletQRs.length ? `
+                  <label style="display: block; font-weight: 600; margin-bottom: 8px;">Choose Wallet</label>
+                  <div class="qr-tile-grid">
+                    ${walletQRs.map(w => `
+                      <div class="qr-tile ${w.id === selectedWalletQRId ? 'selected' : ''}" onclick="selectWalletQR(${w.id})">
+                        <img src="${w.image}">${escapeHtml(w.name)}
+                      </div>
+                    `).join('')}
+                  </div>
+                  <div id="walletQRDisplay"></div>
+                ` : `
+                  <p style="background: #fff3e0; color: #f57c00; padding: 12px; border-radius: 4px; margin-bottom: 15px; font-size: 13px;">
+                    ⚠️ Admin hasn't added a wallet QR code yet. Please choose another payment method or contact us.
+                  </p>
+                `}
+                <div style="margin: 15px 0;">
+                  <label style="display: block; font-weight: 600; margin-bottom: 6px;">Transaction ID (after paying, enter it here)</label>
                   <input type="text" class="form-input" id="walletTxnId" placeholder="e.g. TXN123456789">
                 </div>
-
-                <p style="background: #e3f2fd; padding: 12px; border-radius: 4px; margin-bottom: 15px; font-size: 13px; color: #1565c0;">
-                  ℹ️ For demo purposes, select your wallet and confirm. Amount: <strong>Rs ${total.toLocaleString()}</strong>
-                </p>
-
                 <div style="display: flex; gap: 10px;">
                   <button class="checkout-btn" style="background: #888; flex: 0 0 140px;" onclick="renderCheckout()">← Back</button>
-                  <button class="checkout-btn" onclick="processWalletPayment()">Pay Rs ${total.toLocaleString()}</button>
+                  <button class="checkout-btn" onclick="processWalletPayment()">✓ I've Paid - Confirm Rs ${total.toLocaleString()}</button>
+                </div>
+              </div>
+            `;
+          } else if (method === 'bank') {
+            paymentContent = `
+              <div style="background: white; border-radius: 8px; padding: 30px;">
+                <h2 style="color: #1a472a; margin-bottom: 10px;">🏦 Bank Transfer</h2>
+                <p style="color: #666; margin-bottom: 20px;">Amount to Pay: <strong>Rs ${total.toLocaleString()}</strong></p>
+                ${bankQR && bankQR.image ? `
+                  <div style="text-align:center; margin-bottom:15px;">
+                    <img src="${bankQR.image}" style="width:180px; height:180px; object-fit:contain; border:1px solid #eee; border-radius:8px; padding:8px;">
+                  </div>
+                  ${bankQR.details ? `<p style="text-align:center; font-size:13px; color:#444; margin-bottom:15px;">${escapeHtml(bankQR.details)}</p>` : ''}
+                ` : `
+                  <p style="background: #fff3e0; color: #f57c00; padding: 12px; border-radius: 4px; margin-bottom: 15px; font-size: 13px;">
+                    ⚠️ Admin hasn't added bank QR / account details yet. Please choose another payment method or contact us.
+                  </p>
+                `}
+                <div style="margin-bottom: 15px;">
+                  <label style="display: block; font-weight: 600; margin-bottom: 6px;">Transaction / Reference ID</label>
+                  <input type="text" class="form-input" id="bankTxnId" placeholder="e.g. TXN123456789">
+                </div>
+                <div style="display: flex; gap: 10px;">
+                  <button class="checkout-btn" style="background: #888; flex: 0 0 140px;" onclick="renderCheckout()">← Back</button>
+                  <button class="checkout-btn" onclick="processBankPayment()">✓ I've Paid - Confirm Rs ${total.toLocaleString()}</button>
                 </div>
               </div>
             `;
@@ -2300,15 +2596,49 @@
           if (method === 'split') {
             updateSplitRemaining();
           }
+          if (method === 'wallet' && selectedWalletQRId) {
+            selectWalletQR(selectedWalletQRId);
+          }
+        }
+
+        // Which wallet QR tile is currently selected on the Digital Wallet payment screen.
+        let selectedWalletQRId = null;
+
+        function selectWalletQR(id) {
+          selectedWalletQRId = id;
+          document.querySelectorAll('.qr-tile').forEach(el => el.classList.remove('selected'));
+          const tileEls = document.querySelectorAll('.qr-tile');
+          walletQRs.forEach((w, i) => { if (w.id === id && tileEls[i]) tileEls[i].classList.add('selected'); });
+          const w = walletQRs.find(x => x.id === id);
+          const display = document.getElementById('walletQRDisplay');
+          if (!display) return;
+          display.innerHTML = w ? `
+            <div style="text-align:center; margin:15px 0;">
+              <div style="font-weight:700; color:#1a472a; margin-bottom:8px;">Scan with ${escapeHtml(w.name)} to pay Rs ${currentOrder.total.toLocaleString()}</div>
+              <img src="${w.image}" style="width:200px; height:200px; object-fit:contain; border:1px solid #eee; border-radius:8px; padding:8px;">
+            </div>
+          ` : '';
         }
 
         function processWalletPayment() {
-          const walletProvider = document.getElementById('walletProvider').value;
+          const w = walletQRs.find(x => x.id === selectedWalletQRId);
           const walletTxnId = document.getElementById('walletTxnId').value.trim();
+          if (walletQRs.length && !w) { alert('Please choose a wallet.'); return; }
+          if (!walletTxnId) { alert('Please enter the Transaction ID shown after you pay, so we can confirm your payment.'); return; }
 
           currentOrder.paymentMethod = 'wallet';
-          currentOrder.walletProvider = walletProvider;
+          currentOrder.walletProvider = w ? w.name : 'Digital Wallet';
           currentOrder.walletTxnId = walletTxnId;
+
+          completePayment();
+        }
+
+        function processBankPayment() {
+          const bankTxnId = document.getElementById('bankTxnId').value.trim();
+          if (!bankTxnId) { alert('Please enter the Transaction / Reference ID shown after you pay, so we can confirm your payment.'); return; }
+
+          currentOrder.paymentMethod = 'bank';
+          currentOrder.bankTxnId = bankTxnId;
 
           completePayment();
         }
@@ -2577,9 +2907,14 @@
             return order.splitPayment.map(p => `${p.method.toUpperCase()} (Rs ${p.amount.toLocaleString()})`).join(' + ');
           }
           if (order.paymentMethod === 'wallet') {
-            const names = { esewa: 'eSewa', khalti: 'Khalti', ime_connect: 'IME Connect', connectips: 'ConnectIPS', prabhupay: 'Prabhu Pay', nepalpay: 'NepalPay', other: 'Other Wallet' };
-            const label = names[order.walletProvider] || 'Wallet';
+            // Older orders (before QR wallets existed) stored a fixed provider code -
+            // fall back to a friendly label for those, otherwise use the wallet's own name.
+            const legacyNames = { esewa: 'eSewa', khalti: 'Khalti', ime_connect: 'IME Connect', connectips: 'ConnectIPS', prabhupay: 'Prabhu Pay', nepalpay: 'NepalPay', other: 'Other Wallet' };
+            const label = legacyNames[order.walletProvider] || order.walletProvider || 'Wallet';
             return `WALLET - ${label}${order.walletTxnId ? ' (Txn: ' + order.walletTxnId + ')' : ''}`;
+          }
+          if (order.paymentMethod === 'bank') {
+            return `BANK TRANSFER${order.bankTxnId ? ' (Txn: ' + order.bankTxnId + ')' : ''}`;
           }
           if (order.paymentMethod === 'udhar') {
             return order.paid ? 'UDHAR (Cleared)' : 'UDHAR (Pay Later)';
@@ -3055,23 +3390,25 @@
           saveEodClosures();
         }
 
-        function catchUpAutoEndOfDay() {
-          const today = realTodayStr();
+        // ---- EOD Lock: prevents race conditions when multiple devices are open ----
+        // Only one device at a time runs catchUp; others skip silently.
+        let _eodLock = false;
+
+        // Core catchUp logic (runs after server eod_closures have been merged in).
+        function _runCatchUp() {
+          const today = realTodayStr(); // Nepal date
           const last = localStorage.getItem('kharel_last_seen_date');
 
           if (!last) {
-            // First time this device has ever opened the app - nothing to catch up on.
             localStorage.setItem('kharel_last_seen_date', today);
             return;
           }
           if (last >= today) {
-            // Same real day as last time (or device clock moved backwards) - nothing to close.
             if (last !== today) localStorage.setItem('kharel_last_seen_date', today);
             return;
           }
 
-          // One or more real days passed since the app was last open - close every one of
-          // them (that isn't already closed) before moving on to today.
+          // One or more Nepal calendar days passed — close every unclosed one.
           let d = new Date(last + 'T00:00:00');
           const todayDate = new Date(today + 'T00:00:00');
           let closedAny = false;
@@ -3089,6 +3426,56 @@
           if (closedAny) {
             renderSales();
             updateTopBarForUser();
+          }
+        }
+
+        async function catchUpAutoEndOfDay() {
+          // If another call is already in progress on this device, skip.
+          if (_eodLock) return;
+          _eodLock = true;
+          try {
+            // Try to pull the latest eod_closures from Firestore first so we
+            // don't accidentally re-close a day that was already closed by
+            // another device.  Falls back gracefully if Firebase isn't ready.
+            try {
+              const db = typeof firebase !== 'undefined' ? firebase.firestore() : null;
+              if (db) {
+                const snap = await db.collection('kharel_store').doc('main').get();
+                if (snap.exists) {
+                  const serverData = snap.data();
+                  const serverEodRaw = serverData.data && serverData.data.kharel_eod_closures;
+                  if (serverEodRaw) {
+                    const serverEod = JSON.parse(serverEodRaw);
+                    const localEod  = JSON.parse(localStorage.getItem('kharel_eod_closures') || '[]');
+                    // Merge: server entries win for the same date (server-first strategy).
+                    const merged = [...localEod];
+                    serverEod.forEach(se => {
+                      const idx = merged.findIndex(le => le.date === se.date);
+                      if (idx === -1) {
+                        merged.push(se);
+                      } else if (!merged[idx].cancelled && se.cancelled) {
+                        // Server says reopened — honour that.
+                        merged[idx] = se;
+                      } else if (merged[idx].auto && !se.auto) {
+                        // Server has a manual close for same date — prefer it.
+                        merged[idx] = se;
+                      }
+                    });
+                    // Update in-memory array and localStorage (suppress sync push).
+                    eodClosures = merged;
+                    localStorage.setItem('kharel_eod_closures', JSON.stringify(merged));
+                    console.log('[Kharel EOD] Merged server eod_closures before catch-up');
+                  }
+                }
+              }
+            } catch (fetchErr) {
+              console.warn('[Kharel EOD] Could not fetch server closures (offline?), using local only:', fetchErr);
+            }
+
+            // Now run the actual catch-up with the merged data.
+            _runCatchUp();
+          } finally {
+            _eodLock = false;
           }
         }
 
@@ -4755,6 +5142,36 @@
         // Anyone (customer, employee, admin) can tap a product's picture to see it full
         // screen, browse through every photo, play the product video (if any) and read
         // its description. Admin gets an extra button inside to jump into media editing.
+        // ---------- Full-page Product Detail viewer (image, price, reviews, related items, AI chat) ----------
+        function starsHtml(rating) {
+          const r = Math.round((rating || 0) * 2) / 2;
+          let out = '';
+          for (let i = 1; i <= 5; i++) {
+            out += i <= r ? '★' : (i - 0.5 === r ? '⭐' : '☆');
+          }
+          return out;
+        }
+
+        function loadProductReviews(id) {
+          const all = JSON.parse(localStorage.getItem('kharel_product_reviews') || '{}');
+          return all[id] || [];
+        }
+
+        function saveProductReview(id, review) {
+          const all = JSON.parse(localStorage.getItem('kharel_product_reviews') || '{}');
+          all[id] = all[id] || [];
+          all[id].push(review);
+          localStorage.setItem('kharel_product_reviews', JSON.stringify(all));
+          // keep the product's aggregate rating/review count in sync
+          const p = products.find(pr => pr.id === id);
+          if (p) {
+            const list = all[id];
+            p.reviews = list.length;
+            p.rating = Math.round((list.reduce((s, r) => s + r.rating, 0) / list.length) * 10) / 10;
+            saveProducts();
+          }
+        }
+
         function openProductViewer(id) {
           const existing = document.getElementById('productViewerOverlay');
           if (existing) existing.remove();
@@ -4769,9 +5186,13 @@
           });
           if (p.video) items.push({ type: 'video', src: p.video });
           if (!items.length) items.push({ type: 'icon', src: p.icon || '📦' });
-
           window.__pvItems = items;
-          window.__pvIndex = 0;
+
+          const stock = p.stock || 0;
+          const outOfStock = stock <= 0;
+          const onPromo = isOnPromotion(p);
+          const effPrice = getEffectivePrice(p);
+          const reviews = loadProductReviews(id);
 
           const thumbsHtml = items.length > 1 ? `
             <div style="display:flex; gap:8px; margin-top:10px; overflow-x:auto; padding-bottom:4px;">
@@ -4783,33 +5204,90 @@
             </div>
           ` : '';
 
-          const overlay = document.createElement('div');
-          overlay.className = 'modal-overlay';
-          overlay.id = 'productViewerOverlay';
-          overlay.onclick = function(e) { if (e.target === overlay) overlay.remove(); };
-          overlay.innerHTML = `
-            <div class="modal-content" style="max-width:700px; width:95%; max-height:92vh; overflow:auto; padding:20px;">
-              <div class="modal-header">
-                <span>${escapeHtml(p.name)}</span>
-                <button class="close-modal" onclick="this.closest('.modal-overlay').remove()">×</button>
+          const related = products.filter(pr => pr.id !== p.id && pr.category === p.category).slice(0, 4);
+          const relatedHtml = related.length ? `
+            <div class="pd-section">
+              <div class="section-title" style="margin-top:0;">🧱 Related Products</div>
+              <div class="related-grid">
+                ${related.map(rp => `
+                  <div class="related-card" onclick="openProductViewer(${rp.id})">
+                    ${rp.image ? `<img src="${rp.image}">` : `<div class="ric">${rp.icon || '📦'}</div>`}
+                    <div style="margin-top:6px; font-weight:600;">${escapeHtml(rp.name)}</div>
+                    <div style="color:#c0392b; font-weight:700;">Rs ${getEffectivePrice(rp).toLocaleString()}</div>
+                  </div>
+                `).join('')}
               </div>
-              <div id="pvMainStage" style="width:100%; background:#111; border-radius:8px; display:flex; align-items:center; justify-content:center; min-height:240px; max-height:50vh; overflow:hidden;"></div>
-              ${thumbsHtml}
-              <div style="margin-top:14px;">
-                <div style="font-size:13px; color:#888;">${escapeHtml(p.category || '')}</div>
-                ${isOnPromotion(p) ? `
-                  <div style="font-size:14px; color:#999; text-decoration:line-through; margin-top:4px;">Rs ${(p.price || 0).toLocaleString()}</div>
-                  <div style="font-size:20px; font-weight:700; color:#c0392b; margin:2px 0;">🔥 Rs ${getEffectivePrice(p).toLocaleString()} <span style="font-size:13px; font-weight:600;">(${p.promotion.discountPercent}% OFF)</span></div>
-                ` : `<div style="font-size:20px; font-weight:700; color:#1a472a; margin:4px 0;">Rs ${(p.price || 0).toLocaleString()}</div>`}
-                <div style="font-size:14px; color:#444; line-height:1.5; white-space:pre-wrap;">
-                  ${p.description ? escapeHtml(p.description) : `<span style="color:#aaa; font-style:italic;">${isAdmin() ? 'No description yet - add one from Manage Media.' : 'No description available.'}</span>`}
+            </div>
+          ` : '';
+
+          const reviewsHtml = reviews.length ? reviews.slice().reverse().map(r => `
+            <div class="pd-review-item">
+              <div style="font-weight:700;">${escapeHtml(r.name)} <span class="pd-stars">${starsHtml(r.rating)}</span></div>
+              <div style="color:#555; margin-top:2px;">${escapeHtml(r.comment)}</div>
+              <div style="color:#aaa; font-size:11px; margin-top:2px;">${escapeHtml(r.date)}</div>
+            </div>
+          `).join('') : `<div style="color:#999; font-style:italic; padding:10px 0;">No reviews yet. Be the first!</div>`;
+
+          const overlay = document.createElement('div');
+          overlay.className = 'pd-overlay';
+          overlay.id = 'productViewerOverlay';
+          overlay.innerHTML = `
+            <div class="pd-wrap">
+              <div class="pd-back" onclick="document.getElementById('productViewerOverlay').remove()">← Back</div>
+              <div class="pd-card">
+                <div>
+                  <div id="pvMainStage" class="pd-stage"></div>
+                  ${thumbsHtml}
+                </div>
+                <div>
+                  <div class="pd-cat">${escapeHtml(p.category || '')}</div>
+                  <div class="pd-name">${escapeHtml(p.name)}</div>
+                  <div class="pd-price-row">
+                    ${onPromo ? `<div class="pd-price">Rs ${effPrice.toLocaleString()}</div><div class="pd-price-old">Rs ${p.price.toLocaleString()}</div><div class="pd-off">-${p.promotion.discountPercent}%</div>`
+                              : `<div class="pd-price">Rs ${(p.price || 0).toLocaleString()}</div>`}
+                  </div>
+                  <div class="pd-stars">${starsHtml(p.rating)} <span style="color:#888; font-size:12px;">(${p.reviews || 0} reviews)</span></div>
+                  <div class="pd-badges">
+                    <span class="pd-badge ${outOfStock ? 'oos' : 'stock'}">${outOfStock ? '❌ Out of Stock' : `✅ In Stock (${stock})`}</span>
+                    ${p.warrantyYears ? `<span class="pd-badge warranty">🛡️ Warranty: ${escapeHtml(String(p.warrantyYears))}</span>` : ''}
+                  </div>
+                  <div class="qty-row" style="margin-bottom:10px;">
+                    <button class="qty-btn" onclick="pdChangeQty(${p.id}, -1)" ${outOfStock ? 'disabled' : ''}>−</button>
+                    <input type="number" class="qty-input" id="pdQty-${p.id}" value="1" min="1" max="${stock}" ${outOfStock ? 'disabled' : ''}>
+                    <button class="qty-btn" onclick="pdChangeQty(${p.id}, 1)" ${outOfStock ? 'disabled' : ''}>+</button>
+                  </div>
+                  <div class="pd-actions">
+                    <button class="pd-btn cart" ${outOfStock ? 'disabled style="opacity:.5;"' : ''} onclick="pdAddToCart(${p.id})">🛒 Add to Cart</button>
+                    <button class="pd-btn buy" ${outOfStock ? 'disabled style="opacity:.5;"' : ''} onclick="pdBuyNow(${p.id})">⚡ Buy Now</button>
+                    <button class="pd-btn compare" onclick="toggleCompare(${p.id})">⚖️ Compare</button>
+                    <button class="pd-btn review" onclick="openWriteReview(${p.id})">⭐ Write Review</button>
+                  </div>
+                  <div style="border-top:1px solid #eee; padding-top:12px; margin-top:6px;">
+                    <div style="font-weight:700; color:#1a472a; margin-bottom:6px;">Description</div>
+                    <div style="font-size:14px; color:#444; line-height:1.5; white-space:pre-wrap;">
+                      ${p.description ? escapeHtml(p.description) : `<span style="color:#aaa; font-style:italic;">${isAdmin() ? 'No description yet - add one from Manage Media.' : 'No description available.'}</span>`}
+                    </div>
+                  </div>
+                  ${isAdmin() ? `<button class="checkout-btn" style="margin-top:14px; width:auto; padding:10px 16px;" onclick="openProductMediaEditor(${p.id});">✏️ Manage Photos, Video &amp; Description</button>` : ''}
                 </div>
               </div>
-              ${isAdmin() ? `<button class="checkout-btn" style="margin-top:14px; width:auto; padding:10px 16px;" onclick="this.closest('.modal-overlay').remove(); openProductMediaEditor(${p.id});">✏️ Manage Photos, Video &amp; Description</button>` : ''}
+
+              <div class="pd-section">
+                <div class="section-title" style="margin-top:0;">⭐ Customer Reviews</div>
+                <div id="pdReviewsList">${reviewsHtml}</div>
+              </div>
+
+              ${relatedHtml}
+
+              <div class="pd-section">
+                <div class="section-title" style="margin-top:0;">🤖 Ask about this product</div>
+                ${renderChatWidgetHtml(p.id)}
+              </div>
             </div>
           `;
           document.body.appendChild(overlay);
           pvShow(0);
+          initChatWidget(p.id);
         }
 
         function pvShow(idx) {
@@ -4819,15 +5297,230 @@
           if (!stage || !item) return;
           window.__pvIndex = idx;
           if (item.type === 'video') {
-            stage.innerHTML = `<video src="${item.src}" controls autoplay style="max-width:100%; max-height:50vh;"></video>`;
+            stage.innerHTML = `<video src="${item.src}" controls autoplay></video>`;
           } else if (item.type === 'icon') {
             stage.innerHTML = `<div style="font-size:90px;">${item.src}</div>`;
           } else {
-            stage.innerHTML = `<img src="${item.src}" style="max-width:100%; max-height:50vh; object-fit:contain;">`;
+            stage.innerHTML = `<img src="${item.src}">`;
           }
           document.querySelectorAll('.pv-thumb').forEach(el => {
             el.style.border = (parseInt(el.dataset.idx) === idx) ? '2px solid #2d6d48' : '2px solid transparent';
           });
+        }
+
+        // ---------- Compare ----------
+        function loadCompareList() { return JSON.parse(localStorage.getItem('kharel_compare') || '[]'); }
+        function saveCompareList(list) { localStorage.setItem('kharel_compare', JSON.stringify(list)); }
+
+        function toggleCompare(id) {
+          let list = loadCompareList();
+          if (list.includes(id)) {
+            list = list.filter(x => x !== id);
+            alert('Removed from Compare.');
+          } else {
+            if (list.length >= 3) { alert('You can compare up to 3 products at a time. Remove one first.'); return; }
+            list.push(id);
+            alert(`Added to Compare (${list.length}/3).` + (list.length >= 2 ? ' Open "Compare" from the product card area to view.' : ''));
+          }
+          saveCompareList(list);
+          if (list.length >= 2) showCompareModal();
+        }
+
+        function showCompareModal() {
+          const list = loadCompareList();
+          const items = list.map(id => products.find(p => p.id === id)).filter(Boolean);
+          if (items.length < 2) return;
+          const existing = document.getElementById('compareOverlay');
+          if (existing) existing.remove();
+          const overlay = document.createElement('div');
+          overlay.className = 'modal-overlay';
+          overlay.id = 'compareOverlay';
+          overlay.onclick = function (e) { if (e.target === overlay) overlay.remove(); };
+          overlay.innerHTML = `
+            <div class="modal-content" style="max-width:800px; width:95%; padding:20px;">
+              <div class="modal-header"><span>⚖️ Compare Products</span><button class="close-modal" onclick="this.closest('.modal-overlay').remove()">×</button></div>
+              <div style="overflow-x:auto;">
+                <table style="width:100%; border-collapse:collapse; font-size:13px;">
+                  <tr>${items.map(p => `<td style="padding:8px; text-align:center; border-bottom:2px solid #eee;"><div style="font-size:36px;">${p.image ? `<img src="${p.image}" style="width:60px; height:60px; object-fit:cover; border-radius:6px;">` : p.icon}</div><strong>${escapeHtml(p.name)}</strong><br><button style="font-size:11px; color:#c0392b; background:none; border:none; cursor:pointer;" onclick="toggleCompare(${p.id}); this.closest('.modal-overlay').remove();">remove</button></td>`).join('')}</tr>
+                  <tr><td colspan="${items.length}" style="padding:6px; font-weight:700; color:#888; background:#f9f9f9;">Price</td></tr>
+                  <tr>${items.map(p => `<td style="padding:8px; text-align:center; border-bottom:1px solid #eee;">Rs ${getEffectivePrice(p).toLocaleString()}</td>`).join('')}</tr>
+                  <tr><td colspan="${items.length}" style="padding:6px; font-weight:700; color:#888; background:#f9f9f9;">Category</td></tr>
+                  <tr>${items.map(p => `<td style="padding:8px; text-align:center; border-bottom:1px solid #eee;">${escapeHtml(p.category || '-')}</td>`).join('')}</tr>
+                  <tr><td colspan="${items.length}" style="padding:6px; font-weight:700; color:#888; background:#f9f9f9;">Stock</td></tr>
+                  <tr>${items.map(p => `<td style="padding:8px; text-align:center; border-bottom:1px solid #eee;">${(p.stock || 0) > 0 ? p.stock + ' available' : 'Out of stock'}</td>`).join('')}</tr>
+                  <tr><td colspan="${items.length}" style="padding:6px; font-weight:700; color:#888; background:#f9f9f9;">Rating</td></tr>
+                  <tr>${items.map(p => `<td style="padding:8px; text-align:center;">${starsHtml(p.rating)} (${p.reviews || 0})</td>`).join('')}</tr>
+                </table>
+              </div>
+            </div>
+          `;
+          document.body.appendChild(overlay);
+        }
+
+        // ---------- Write a Review ----------
+        function openWriteReview(id) {
+          const existing = document.getElementById('reviewOverlay');
+          if (existing) existing.remove();
+          const overlay = document.createElement('div');
+          overlay.className = 'modal-overlay';
+          overlay.id = 'reviewOverlay';
+          overlay.onclick = function (e) { if (e.target === overlay) overlay.remove(); };
+          overlay.innerHTML = `
+            <div class="modal-content" style="max-width:420px; width:92%; padding:20px;">
+              <div class="modal-header"><span>⭐ Write a Review</span><button class="close-modal" onclick="this.closest('.modal-overlay').remove()">×</button></div>
+              <div style="margin-bottom:12px;">
+                <label style="display:block; font-weight:600; margin-bottom:6px;">Your Name</label>
+                <input type="text" class="form-input" id="reviewName" placeholder="Your name">
+              </div>
+              <div style="margin-bottom:12px;">
+                <label style="display:block; font-weight:600; margin-bottom:6px;">Rating</label>
+                <select class="form-input" id="reviewRating">
+                  <option value="5">★★★★★ (5)</option>
+                  <option value="4">★★★★☆ (4)</option>
+                  <option value="3">★★★☆☆ (3)</option>
+                  <option value="2">★★☆☆☆ (2)</option>
+                  <option value="1">★☆☆☆☆ (1)</option>
+                </select>
+              </div>
+              <div style="margin-bottom:16px;">
+                <label style="display:block; font-weight:600; margin-bottom:6px;">Your Review</label>
+                <textarea class="form-input" id="reviewComment" rows="3" placeholder="What did you think of this product?"></textarea>
+              </div>
+              <button class="checkout-btn" onclick="submitReview(${id})">Submit Review</button>
+            </div>
+          `;
+          document.body.appendChild(overlay);
+        }
+
+        function submitReview(id) {
+          const name = document.getElementById('reviewName').value.trim() || 'Anonymous';
+          const rating = parseInt(document.getElementById('reviewRating').value) || 5;
+          const comment = document.getElementById('reviewComment').value.trim();
+          if (!comment) { alert('Please write a short review before submitting.'); return; }
+          saveProductReview(id, { name, rating, comment, date: workingDateLocaleString ? workingDateLocaleString() : new Date().toLocaleString() });
+          document.getElementById('reviewOverlay').remove();
+          renderProducts();
+          openProductViewer(id);
+          alert('✓ Thank you for your review!');
+        }
+
+        // ---------- Product AI Chat Widget ----------
+        // A lightweight, on-page assistant that answers questions about THIS product and the
+        // shop only, by matching the customer's question against the product's own data
+        // (name, price, stock, category, description, warranty) plus a small set of common
+        // shop FAQs (delivery, returns, payment). It never answers anything outside that scope,
+        // and always offers a one-tap WhatsApp handoff to Staff or Admin.
+        let chatHistory = {}; // { productId: [{from:'bot'|'user', text}] }
+
+        function renderChatWidgetHtml(productId) {
+          return `
+            <div class="chat-box">
+              <div class="chat-header">🤖 Product Assistant <span style="font-weight:400; opacity:.85; font-size:11px;">(products &amp; shop info only)</span></div>
+              <div class="chat-msgs" id="chatMsgs-${productId}"></div>
+              <div class="chat-quick">
+                <button onclick="chatbotQuick(${productId}, 'price')">💰 Price</button>
+                <button onclick="chatbotQuick(${productId}, 'stock')">📦 In stock?</button>
+                <button onclick="chatbotQuick(${productId}, 'warranty')">🛡️ Warranty</button>
+                <button onclick="chatbotQuick(${productId}, 'delivery')">🚚 Delivery</button>
+                <button onclick="chatbotQuick(${productId}, 'return')">↩️ Returns</button>
+                <button onclick="chatbotQuick(${productId}, 'human')">🙋 Talk to a person</button>
+              </div>
+              <div class="chat-input-row">
+                <input type="text" id="chatInput-${productId}" placeholder="Ask about this product..." onkeydown="if(event.key==='Enter')chatbotSend(${productId})">
+                <button onclick="chatbotSend(${productId})">Send</button>
+              </div>
+            </div>
+          `;
+        }
+
+        function initChatWidget(productId) {
+          if (!chatHistory[productId]) {
+            const p = products.find(pr => pr.id === productId);
+            chatHistory[productId] = [{ from: 'bot', text: `Hi! I can answer questions about the ${p ? p.name : 'this product'} - price, stock, warranty, delivery, returns and payment. What would you like to know?` }];
+          }
+          paintChatWidget(productId);
+        }
+
+        function paintChatWidget(productId) {
+          const el = document.getElementById(`chatMsgs-${productId}`);
+          if (!el) return;
+          el.innerHTML = (chatHistory[productId] || []).map(m => `<div class="chat-msg ${m.from}">${m.text}</div>`).join('');
+          el.scrollTop = el.scrollHeight;
+        }
+
+        function chatbotQuick(productId, key) {
+          const labels = { price: 'How much does this cost?', stock: 'Is this in stock?', warranty: 'Does this have a warranty?', delivery: 'Do you deliver?', return: 'What is your return policy?', human: 'I want to talk to a person' };
+          chatbotHandle(productId, labels[key] || key);
+        }
+
+        function chatbotSend(productId) {
+          const input = document.getElementById(`chatInput-${productId}`);
+          const text = input.value.trim();
+          if (!text) return;
+          input.value = '';
+          chatbotHandle(productId, text);
+        }
+
+        function chatbotHandle(productId, text) {
+          const p = products.find(pr => pr.id === productId);
+          chatHistory[productId] = chatHistory[productId] || [];
+          chatHistory[productId].push({ from: 'user', text: escapeHtml(text) });
+          const reply = chatbotAnswer(p, text);
+          chatHistory[productId].push({ from: 'bot', text: reply });
+          paintChatWidget(productId);
+        }
+
+        // Keyword-matched answers, generated from this product's own live data (price, stock,
+        // category, description, warranty, promotion) and a few standard shop FAQs. Anything
+        // that isn't about the product or the shop gets politely declined and handed off to a
+        // human, instead of guessing.
+        function chatbotAnswer(p, question) {
+          if (!p) return "Sorry, I couldn't find that product.";
+          const q = question.toLowerCase();
+          const waStaff = chatWaButtons();
+
+          if (/\b(price|cost|kitna|rate|paisa|paisa|dam|kimat)\b/.test(q)) {
+            if (isOnPromotion(p)) return `It's on offer right now: <s>Rs ${p.price.toLocaleString()}</s> <strong>Rs ${getEffectivePrice(p).toLocaleString()}</strong> (${p.promotion.discountPercent}% off).`;
+            return `The price of ${escapeHtml(p.name)} is <strong>Rs ${p.price.toLocaleString()}</strong>.`;
+          }
+          if (/\b(stock|available|in stock|hai ki nahi|hai kya)\b/.test(q)) {
+            return (p.stock || 0) > 0 ? `Yes, it's in stock - <strong>${p.stock} unit(s)</strong> available right now.` : `Sorry, ${escapeHtml(p.name)} is currently out of stock. Please check back soon or contact us to ask when it'll be restocked.`;
+          }
+          if (/\b(warranty|guarantee)\b/.test(q)) {
+            return p.warrantyYears ? `This product comes with a warranty of <strong>${escapeHtml(String(p.warrantyYears))}</strong>.` : `There's no separate warranty listed for this item. Feel free to ask our staff for details.`;
+          }
+          if (/\b(discount|off|sale|promo|offer)\b/.test(q)) {
+            return isOnPromotion(p) ? `Yes! It's currently <strong>${p.promotion.discountPercent}% off</strong>, now Rs ${getEffectivePrice(p).toLocaleString()}.` : `There's no active discount on this item right now, but check back - we run promotions regularly.`;
+          }
+          if (/\b(deliver|delivery|shipping|pahucha)\b/.test(q)) {
+            return `Yes, we deliver. Delivery is arranged after your order is confirmed - our team will contact you on the phone number you provide at checkout to arrange timing and cost.`;
+          }
+          if (/\b(return|refund|exchange|wapas)\b/.test(q)) {
+            return `If there's an issue with your order, please contact us with your invoice number and we'll help with a return, exchange or refund - just reach out on WhatsApp below.`;
+          }
+          if (/\b(pay|payment|cash|wallet|bank|udhar|card)\b/.test(q)) {
+            return `We accept Cash on Delivery, Debit/Credit Card, Bank Transfer, Digital Wallets (QR scan) and Udhar (pay later) for trusted customers. You can choose your preferred option at Checkout.`;
+          }
+          if (/\b(category|kis category|type|kind)\b/.test(q)) {
+            return `${escapeHtml(p.name)} is listed under <strong>${escapeHtml(p.category || 'our catalog')}</strong>.`;
+          }
+          if (/\b(describe|description|detail|about|kya hai|specification|spec)\b/.test(q)) {
+            return p.description ? escapeHtml(p.description) : `I don't have a detailed description for this item yet - our staff can help with specifics.`;
+          }
+          if (/\b(human|staff|admin|agent|person|baat|call|whatsapp)\b/.test(q)) {
+            return `Sure - you can message our team directly:<br>${waStaff}`;
+          }
+
+          return `I can only help with questions about this product or our shop (price, stock, warranty, delivery, returns, payment). I didn't quite catch that - could you rephrase, or talk to our team directly?<br>${waStaff}`;
+        }
+
+        function chatWaButtons() {
+          const adminNum = (PHONE || '').replace(/\D/g, '');
+          const staffNum = (STAFF_PHONE || PHONE || '').replace(/\D/g, '');
+          let html = '';
+          if (staffNum) html += `<button class="chat-wa-btn" onclick="window.open('https://wa.me/977${staffNum}?text=' + encodeURIComponent('Hi, I have a question about a product.'), '_blank')">💬 Chat with Staff</button>`;
+          if (adminNum) html += `<button class="chat-wa-btn" style="background:#1a472a;" onclick="window.open('https://wa.me/977${adminNum}?text=' + encodeURIComponent('Hi, I have a question.'), '_blank')">👨‍💼 Chat with Admin</button>`;
+          return html;
         }
 
         // ---------- Admin: Manage extra photos, video and description ----------
@@ -4881,9 +5574,14 @@
                 <textarea class="form-input" id="pmDescription" rows="5" placeholder="Describe this product for customers...">${p.description ? escapeHtml(p.description) : ''}</textarea>
               </div>
 
+              <div style="margin-bottom:18px;">
+                <div style="font-weight:600; margin-bottom:8px; color:#333;">Warranty <span style="font-weight:400; color:#888;">(leave blank if none)</span></div>
+                <input type="text" class="form-input" id="pmWarranty" placeholder="e.g. 1 Year" value="${p.warrantyYears ? escapeAttr(String(p.warrantyYears)) : ''}">
+              </div>
+
               <div style="display:flex; gap:10px;">
                 <button class="checkout-btn" style="background:#888;" onclick="this.closest('.modal-overlay').remove()">Close</button>
-                <button class="checkout-btn" onclick="saveProductDescription(${p.id})">💾 Save Description</button>
+                <button class="checkout-btn" onclick="saveProductDescription(${p.id})">💾 Save Description &amp; Warranty</button>
               </div>
             </div>
           `;
@@ -4988,10 +5686,12 @@
           const product = products.find(p => p.id === id);
           if (!product) return;
           const field = document.getElementById('pmDescription');
+          const warrantyField = document.getElementById('pmWarranty');
           product.description = field ? field.value.trim() : (product.description || '');
+          product.warrantyYears = warrantyField ? warrantyField.value.trim() : (product.warrantyYears || '');
           saveProducts();
           renderProducts();
-          alert('✓ Description saved.');
+          alert('✓ Description &amp; warranty saved.'.replace('&amp;', '&'));
         }
 
         let newProductImageData = null;
@@ -5104,7 +5804,39 @@
                   <button class="checkout-btn" style="width:auto; padding:10px 16px;" onclick="adminSavePhoneNumber()">💾 Save</button>
                 </div>
                 <p style="font-size:12px; color:#888; margin-top:8px;">Only Admin can change this. Used for the "Contact on WhatsApp" button, the Contact tab, and printed invoices/receipts.</p>
+
+                <label style="display:block; font-weight:600; margin:16px 0 6px;">Staff WhatsApp Number <span style="font-weight:400; color:#888;">(for the product chat "Talk to Staff" button)</span></label>
+                <div style="display:flex; gap:10px;">
+                  <input type="text" class="form-input" id="staffWhatsappNumberInput" value="${STAFF_PHONE}" placeholder="Leave blank to reuse the Admin number above">
+                  <button class="checkout-btn" style="width:auto; padding:10px 16px;" onclick="adminSaveStaffPhoneNumber()">💾 Save</button>
+                </div>
+                <p style="font-size:12px; color:#888; margin-top:8px;">Shown to customers on the product page's AI chat when they ask to talk to staff. If left blank, it reuses the Admin number above.</p>
               </div>
+
+              <h3 style="margin: 20px 0 12px; font-size: 14px; border-bottom: 2px solid #2d6d48; padding-bottom: 8px;">💳 Digital Wallet &amp; Bank QR Codes</h3>
+              <div style="max-width: 520px; margin-bottom: 24px;">
+                <p style="font-size:12px; color:#888; margin-bottom:12px;">Add a QR code image for each wallet (eSewa, Khalti, IME Pay, bank QR, etc). Customers select one at Checkout → Digital Wallet, scan it to pay, then enter the transaction ID to complete the order.</p>
+                <div id="walletQRList" style="display:flex; flex-wrap:wrap; gap:12px; margin-bottom:16px;"></div>
+                <div style="background:#f9f9f9; border-radius:8px; padding:14px;">
+                  <label style="display:block; font-weight:600; margin-bottom:6px;">Wallet Name</label>
+                  <input type="text" class="form-input" id="newWalletName" placeholder="e.g. eSewa, Khalti, IME Pay" style="margin-bottom:10px;">
+                  <label style="display:block; font-weight:600; margin-bottom:6px;">QR Code Image</label>
+                  <input type="file" accept="image/*" id="newWalletImage" style="margin-bottom:10px;">
+                  <button class="checkout-btn" style="width:auto; padding:8px 16px;" onclick="adminAddWalletQR()">➕ Add Wallet QR</button>
+                </div>
+
+                <h4 style="margin:20px 0 10px; font-size:13px; color:#1a472a;">🏦 Bank Transfer QR</h4>
+                <div id="bankQRPreview" style="margin-bottom:10px;"></div>
+                <div style="background:#f9f9f9; border-radius:8px; padding:14px;">
+                  <label style="display:block; font-weight:600; margin-bottom:6px;">Bank / Account Details (shown to customer)</label>
+                  <input type="text" class="form-input" id="bankDetailsText" placeholder="e.g. Nepal Bank Ltd, A/C: Kharel Nirmad Samagri, 0123456789" value="${bankQR && bankQR.details ? escapeAttr(bankQR.details) : ''}" style="margin-bottom:10px;">
+                  <label style="display:block; font-weight:600; margin-bottom:6px;">Bank QR Code Image</label>
+                  <input type="file" accept="image/*" id="bankQRImage" style="margin-bottom:10px;">
+                  <button class="checkout-btn" style="width:auto; padding:8px 16px;" onclick="adminSaveBankQR()">💾 Save Bank QR</button>
+                  ${bankQR ? `<button class="checkout-btn" style="width:auto; padding:8px 16px; background:#c0392b;" onclick="adminDeleteBankQR()">🗑️ Remove</button>` : ''}
+                </div>
+              </div>
+
               <h3 style="margin: 20px 0 12px; font-size: 14px; border-bottom: 2px solid #2d6d48; padding-bottom: 8px;">Invoice Settings</h3>
               <div style="max-width: 400px;">
                 <label style="display:block; font-weight:600; margin-bottom:6px;">PAN Number</label>
@@ -5113,6 +5845,21 @@
                   <button class="checkout-btn" style="width:auto; padding:10px 16px;" onclick="adminSavePANNumber()">💾 Save</button>
                 </div>
                 <p style="font-size:12px; color:#888; margin-top:8px;">Only Admin can change this. This is printed on every invoice (PDF, print, WhatsApp/Viber invoice message).</p>
+              </div>
+
+              <h3 style="margin: 20px 0 12px; font-size: 14px; border-bottom: 2px solid #2d6d48; padding-bottom: 8px;">🏷️ Home Page Badge Messages</h3>
+              <div style="max-width: 500px; margin-bottom: 24px;">
+                <p style="font-size:12px; color:#888; margin-bottom:12px;">These are the tappable badges on the home page ("Delivery Available", "Trusted Quality", etc). Set what message customers see when they tap each one.</p>
+                ${Object.keys(HERO_FEATS).map(k => {
+                  const f = HERO_FEATS[k];
+                  return `
+                    <div style="background:#f9f9f9; border-radius:8px; padding:12px; margin-bottom:10px;">
+                      <label style="display:block; font-weight:600; margin-bottom:6px;">${f.icon} ${escapeHtml(f.label)}</label>
+                      <textarea class="form-input" id="heroFeatMsg_${k}" rows="2" style="margin-bottom:8px;">${escapeHtml(f.message)}</textarea>
+                      <button class="checkout-btn" style="width:auto; padding:6px 14px; font-size:12px;" onclick="adminSaveHeroFeatMessage('${k}')">💾 Save</button>
+                    </div>
+                  `;
+                }).join('')}
               </div>
 
               <h3 style="margin: 20px 0 12px; font-size: 14px; border-bottom: 2px solid #c0392b; padding-bottom: 8px; color:#c0392b;">🗑️ Clear Sales & Orders Data</h3>
@@ -5163,6 +5910,135 @@
             </div>
           `;
           document.getElementById('adminContent').innerHTML = html;
+          renderWalletQRAdminList();
+          renderBankQRAdminPreview();
+        }
+
+        function adminSaveStaffPhoneNumber() {
+          if (!isAdmin()) return;
+          STAFF_PHONE = document.getElementById('staffWhatsappNumberInput').value.trim();
+          saveStaffPhoneNumber();
+          alert('✓ Staff WhatsApp number updated.');
+        }
+
+        function adminSaveHeroFeatMessage(key) {
+          if (!isAdmin()) return;
+          const el = document.getElementById(`heroFeatMsg_${key}`);
+          if (!el || !HERO_FEATS[key]) return;
+          const val = el.value.trim();
+          if (!val) { alert('Message khaali nahi ho sakta.'); return; }
+          HERO_FEATS[key].message = val;
+          saveHeroFeatMessages();
+          alert('✓ Badge message updated.');
+        }
+
+        // ---------- Digital Wallet QR management ----------
+        function loadWalletQRs() {
+          try { return JSON.parse(localStorage.getItem('kharel_wallet_qrs')) || []; } catch (e) { return []; }
+        }
+        function saveWalletQRs() {
+          try {
+            localStorage.setItem('kharel_wallet_qrs', JSON.stringify(walletQRs));
+          } catch (e) {
+            alert('⚠️ Could not save - browser storage is full. Try a smaller QR image.');
+          }
+        }
+        let walletQRs = loadWalletQRs();
+        let nextWalletQRId = walletQRs.reduce((m, w) => Math.max(m, w.id || 0), 0) + 1;
+
+        function renderWalletQRAdminList() {
+          const el = document.getElementById('walletQRList');
+          if (!el) return;
+          if (!walletQRs.length) {
+            el.innerHTML = `<div style="color:#999; font-style:italic; font-size:13px;">No wallet QR codes added yet.</div>`;
+            return;
+          }
+          el.innerHTML = walletQRs.map(w => `
+            <div style="text-align:center; border:1px solid #eee; border-radius:8px; padding:8px; width:110px;">
+              <img src="${w.image}" style="width:90px; height:90px; object-fit:contain;">
+              <div style="font-size:12px; font-weight:600; margin-top:4px;">${escapeHtml(w.name)}</div>
+              <button style="font-size:11px; color:#c0392b; background:none; border:none; cursor:pointer; margin-top:4px;" onclick="adminDeleteWalletQR(${w.id})">🗑️ Remove</button>
+            </div>
+          `).join('');
+        }
+
+        function adminAddWalletQR() {
+          if (!isAdmin()) return;
+          const nameEl = document.getElementById('newWalletName');
+          const fileEl = document.getElementById('newWalletImage');
+          const name = nameEl.value.trim();
+          if (!name) { alert('Please enter a wallet name (e.g. eSewa, Khalti).'); return; }
+          const file = fileEl.files && fileEl.files[0];
+          if (!file) { alert('Please choose a QR code image.'); return; }
+          const reader = new FileReader();
+          reader.onload = function (e) {
+            walletQRs.push({ id: nextWalletQRId++, name, image: e.target.result });
+            saveWalletQRs();
+            renderWalletQRAdminList();
+            nameEl.value = '';
+            fileEl.value = '';
+            alert(`✓ "${name}" QR code added.`);
+          };
+          reader.readAsDataURL(file);
+        }
+
+        function adminDeleteWalletQR(id) {
+          if (!isAdmin()) return;
+          if (!confirm('Remove this wallet QR code?')) return;
+          walletQRs = walletQRs.filter(w => w.id !== id);
+          saveWalletQRs();
+          renderWalletQRAdminList();
+        }
+
+        // ---------- Bank QR management ----------
+        function loadBankQR() {
+          try { return JSON.parse(localStorage.getItem('kharel_bank_qr')) || null; } catch (e) { return null; }
+        }
+        function saveBankQRData() {
+          try {
+            localStorage.setItem('kharel_bank_qr', JSON.stringify(bankQR));
+          } catch (e) {
+            alert('⚠️ Could not save - browser storage is full. Try a smaller QR image.');
+          }
+        }
+        let bankQR = loadBankQR();
+
+        function renderBankQRAdminPreview() {
+          const el = document.getElementById('bankQRPreview');
+          if (!el) return;
+          el.innerHTML = bankQR && bankQR.image
+            ? `<img src="${bankQR.image}" style="width:100px; height:100px; object-fit:contain; border:1px solid #eee; border-radius:8px; padding:6px;">`
+            : `<div style="color:#999; font-style:italic; font-size:13px;">No bank QR code added yet.</div>`;
+        }
+
+        function adminSaveBankQR() {
+          if (!isAdmin()) return;
+          const details = document.getElementById('bankDetailsText').value.trim();
+          const fileEl = document.getElementById('bankQRImage');
+          const file = fileEl.files && fileEl.files[0];
+          const finish = (imageData) => {
+            bankQR = { image: imageData || (bankQR && bankQR.image) || '', details };
+            saveBankQRData();
+            renderBankQRAdminPreview();
+            renderAdminSettings();
+            alert('✓ Bank QR details saved.');
+          };
+          if (file) {
+            const reader = new FileReader();
+            reader.onload = e => finish(e.target.result);
+            reader.readAsDataURL(file);
+          } else {
+            if (!bankQR || !bankQR.image) { alert('Please choose a QR code image.'); return; }
+            finish(null);
+          }
+        }
+
+        function adminDeleteBankQR() {
+          if (!isAdmin()) return;
+          if (!confirm('Remove the bank QR code?')) return;
+          bankQR = null;
+          saveBankQRData();
+          renderAdminSettings();
         }
 
         function adminSavePhoneNumber() {
@@ -8110,8 +8986,9 @@
         applyContactPhoneUI();
         populateCategoryFilter();
 
-        // Catch up on any un-closed real day right away, then keep checking once a
-        // minute so a day change is caught even if the app is just left open overnight.
+        // Catch up on any un-closed Nepal day right away, then keep checking once a
+        // minute so a day change is caught even if the app is left open overnight.
+        // Uses Nepal timezone (UTC+5:45) so day-end fires at local midnight in Nepal.
         catchUpAutoEndOfDay();
         setInterval(catchUpAutoEndOfDay, 60000);
 
@@ -8160,7 +9037,9 @@
         'kharel_employee_wastage_perms', 'kharel_categories', 'kharel_certificates',
         'kharel_leave_requests', 'kharel_eod_closures', 'kharel_tax_rate',
         'kharel_invoice_counter', 'kharel_refund_deduction_pct', 'kharel_print_paper',
-        'kharel_whatsapp_number', 'kharel_stock_movements', 'kharel_pan_number'
+        'kharel_whatsapp_number', 'kharel_stock_movements', 'kharel_pan_number',
+        'kharel_product_reviews', 'kharel_wallet_qrs', 'kharel_bank_qr',
+        'kharel_hero_feat_messages'
       ];
 
       const nativeSetItem = localStorage.setItem.bind(localStorage);
@@ -8259,10 +9138,32 @@
         docRef.onSnapshot(snap => {
           if (!snap.exists) return;
           const remote = snap.data();
-          if (remote.version > lastWrittenVersion) {
-            applyRemoteData(remote);
-            showSyncToast();
-          }
+
+          // Ignore snapshots that are older than or equal to what we last wrote
+          // — this avoids re-applying our own just-pushed data.
+          if (remote.version <= lastWrittenVersion) return;
+
+          // EOD conflict detection: warn if local and remote differ for eod_closures.
+          try {
+            const localEodRaw  = localStorage.getItem('kharel_eod_closures');
+            const remoteEodRaw = remote.data && remote.data.kharel_eod_closures;
+            if (localEodRaw && remoteEodRaw && localEodRaw !== remoteEodRaw) {
+              const localEod  = JSON.parse(localEodRaw);
+              const remoteEod = JSON.parse(remoteEodRaw);
+              // Find dates where closure status conflicts.
+              const conflicts = remoteEod.filter(se => {
+                const le = localEod.find(l => l.date === se.date);
+                return le && le.cancelled !== se.cancelled;
+              });
+              if (conflicts.length > 0) {
+                console.warn('[Kharel Sync] EOD conflict detected for dates:',
+                  conflicts.map(c => c.date).join(', '), '— server version wins.');
+              }
+            }
+          } catch (e) { /* ignore JSON parse errors during conflict check */ }
+
+          applyRemoteData(remote);
+          showSyncToast();
         }, err => console.error('[Kharel Sync] listener error:', err));
       }).catch(err => console.error('[Kharel Sync] anonymous sign-in error:', err));
     })();
