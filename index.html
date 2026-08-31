@@ -330,6 +330,8 @@
           padding: 30px;
           max-width: 500px;
           width: 90%;
+          max-height: 90vh;
+          overflow-y: auto;
           box-shadow: 0 8px 24px rgba(0,0,0,0.15);
         }
 
@@ -798,6 +800,52 @@
         .qr-tile { border:2px solid #eee; border-radius:8px; padding:8px; text-align:center; cursor:pointer; font-size:12px; font-weight:600; }
         .qr-tile.selected { border-color:#2d6d48; background:#f0f8f5; }
         .qr-tile img { width:100%; height:70px; object-fit:contain; margin-bottom:6px; }
+
+        /* ===================== Mobile responsiveness ===================== */
+        html, body { max-width: 100%; overflow-x: hidden; }
+        img, video { max-width: 100%; }
+
+        /* Any data table that doesn't already have its own horizontal-scroll wrapper
+           becomes swipeable instead of forcing the whole page to zoom out/scroll sideways. */
+        @media (max-width: 760px) {
+          table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        }
+
+        @media (max-width: 640px) {
+          .container { padding: 10px; }
+
+          .top-bar { padding: 10px 12px; flex-wrap: wrap; gap: 8px; }
+          .brand { font-size: 15px; }
+          .top-actions { gap: 8px; flex-wrap: wrap; }
+          .top-btn { padding: 6px 10px; font-size: 11px; }
+
+          .tabs { gap: 6px; }
+          .tab-btn { padding: 8px 12px; font-size: 13px; }
+
+          .search-section { padding: 10px; gap: 8px; }
+          .search-input { min-width: 0; width: 100%; }
+          .filter-select { width: 100%; }
+
+          .products-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+
+          .modal-content { padding: 16px; width: 94%; max-height: 92vh; }
+          .modal-header { font-size: 16px; }
+
+          .hero-headline { font-size: 26px !important; }
+          .hero-feats { gap: 8px !important; }
+          .hero-btn-row { flex-wrap: wrap; }
+
+          .chat-msgs { height: 220px; }
+          .chat-msg { max-width: 88%; }
+          .chat-quick { gap: 4px; }
+          .chat-quick button { font-size: 10px; padding: 4px 8px; }
+
+          .qr-tile-grid { grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); }
+
+          /* Admin dashboard nav (Products/Orders/Settings etc) - let it scroll sideways
+             instead of squashing every button unreadably small. */
+          #adminContent > div > div:has(> button.tab-btn) { overflow-x: auto; flex-wrap: nowrap !important; }
+        }
     </style>
 </head>
 <body>
@@ -1595,6 +1643,51 @@
 
         function escapeHtml(s) {
           return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        }
+
+        // ---------- Image compression (fixes cross-device sync) ----------
+        // Firestore (used for cross-device sync) refuses to store any single document
+        // larger than ~1MB. A few full-resolution phone-camera photos (QR codes, product
+        // photos) can already blow past that on their own, so a sync would silently fail
+        // and never reach other devices. Every image upload below now runs through this
+        // first: it resizes the image down and re-encodes it as a compact JPEG, which
+        // typically shrinks a 2-4MB photo to well under 150KB with no visible quality
+        // loss for on-screen use, while keeping everything else in the app unchanged.
+        function compressImageFile(file, maxDim, quality, format) {
+          maxDim = maxDim || 900;
+          quality = quality || 0.72;
+          format = format || 'image/jpeg';
+          return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onerror = () => reject(new Error('read failed'));
+            reader.onload = (e) => {
+              const img = new Image();
+              img.onerror = () => resolve(e.target.result); // fallback to original if decode fails
+              img.onload = () => {
+                let { width, height } = img;
+                if (width > maxDim || height > maxDim) {
+                  if (width >= height) { height = Math.round(height * (maxDim / width)); width = maxDim; }
+                  else { width = Math.round(width * (maxDim / height)); height = maxDim; }
+                }
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                if (format === 'image/jpeg') {
+                  ctx.fillStyle = '#ffffff'; // flattens transparent PNGs onto white before JPEG encode
+                  ctx.fillRect(0, 0, width, height);
+                }
+                ctx.drawImage(img, 0, 0, width, height);
+                try {
+                  resolve(canvas.toDataURL(format, quality));
+                } catch (err) {
+                  resolve(e.target.result); // fallback to original on canvas error
+                }
+              };
+              img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+          });
         }
 
         function paperWidthSelectHtml(idSuffix) {
@@ -5113,19 +5206,17 @@
             inputEl.value = '';
             return;
           }
-          const reader = new FileReader();
-          reader.onload = function(e) {
+          compressImageFile(file, 900, 0.72).then(dataUrl => {
             const product = products.find(p => p.id === id);
             if (!product) return;
-            product.image = e.target.result;
+            product.image = dataUrl;
             saveProducts();
             renderProducts();
             const img = document.getElementById(`adminImgPreview-${id}`);
             const iconSpan = document.getElementById(`adminIconPreview-${id}`);
             if (img) { img.src = product.image; img.style.display = ''; }
             if (iconSpan) iconSpan.style.display = 'none';
-          };
-          reader.readAsDataURL(file);
+          });
         }
 
         function removeProductImage(id) {
@@ -5619,15 +5710,12 @@
               finishOne();
               return;
             }
-            const reader = new FileReader();
-            reader.onload = function(e) {
-              product.images.push(e.target.result);
+            compressImageFile(file, 900, 0.72).then(dataUrl => {
+              product.images.push(dataUrl);
               saveProducts();
               renderProducts();
               finishOne();
-            };
-            reader.onerror = finishOne;
-            reader.readAsDataURL(file);
+            }).catch(finishOne);
           });
           inputEl.value = '';
         }
@@ -5709,13 +5797,11 @@
             inputEl.value = '';
             return;
           }
-          const reader = new FileReader();
-          reader.onload = function(e) {
-            newProductImageData = e.target.result;
+          compressImageFile(file, 900, 0.72).then(dataUrl => {
+            newProductImageData = dataUrl;
             const preview = document.getElementById('newProdImgPreview');
             if (preview) { preview.src = newProductImageData; preview.style.display = 'inline-block'; }
-          };
-          reader.readAsDataURL(file);
+          });
         }
 
         function adminDeleteProduct(id) {
@@ -5970,16 +6056,14 @@
           if (!name) { alert('Please enter a wallet name (e.g. eSewa, Khalti).'); return; }
           const file = fileEl.files && fileEl.files[0];
           if (!file) { alert('Please choose a QR code image.'); return; }
-          const reader = new FileReader();
-          reader.onload = function (e) {
-            walletQRs.push({ id: nextWalletQRId++, name, image: e.target.result });
+          compressImageFile(file, 700, 0.9, 'image/png').then(dataUrl => {
+            walletQRs.push({ id: nextWalletQRId++, name, image: dataUrl });
             saveWalletQRs();
             renderWalletQRAdminList();
             nameEl.value = '';
             fileEl.value = '';
             alert(`✓ "${name}" QR code added.`);
-          };
-          reader.readAsDataURL(file);
+          });
         }
 
         function adminDeleteWalletQR(id) {
@@ -6024,9 +6108,7 @@
             alert('✓ Bank QR details saved.');
           };
           if (file) {
-            const reader = new FileReader();
-            reader.onload = e => finish(e.target.result);
-            reader.readAsDataURL(file);
+            compressImageFile(file, 700, 0.9, 'image/png').then(dataUrl => finish(dataUrl));
           } else {
             if (!bankQR || !bankQR.image) { alert('Please choose a QR code image.'); return; }
             finish(null);
@@ -6644,16 +6726,14 @@
             inputEl.value = '';
             return;
           }
-          const reader = new FileReader();
-          reader.onload = function(e) {
+          compressImageFile(file, 500, 0.75).then(dataUrl => {
             const me = USERS[currentUser.username];
             if (!me) return;
-            me.profilePhoto = e.target.result;
+            me.profilePhoto = dataUrl;
             saveUsers();
             updateTopBarForUser();
             renderMyAccount();
-          };
-          reader.readAsDataURL(file);
+          });
         }
 
         function removeProfilePhoto() {
@@ -6853,13 +6933,26 @@
           window.__attachments[holderKey] = null;
           if (label) { label.textContent = '⏳ Reading file... please wait before submitting.'; label.style.color = '#8a6d1a'; }
 
-          const reader = new FileReader();
-          reader.onload = function(e) {
+          const isJpeg = ['image/jpeg', 'image/jpg'].includes(file.type) || /\.jpe?g$/.test(name);
+          const finishAttachment = (fileData) => {
             window.__attachments = window.__attachments || {};
-            window.__attachments[holderKey] = { fileName: file.name, fileType: file.type || (name.endsWith('.pdf') ? 'application/pdf' : 'image/jpeg'), fileData: e.target.result };
+            window.__attachments[holderKey] = { fileName: file.name, fileType: file.type || (name.endsWith('.pdf') ? 'application/pdf' : 'image/jpeg'), fileData };
             const lbl = document.getElementById(`${holderKey}-filename`);
             if (lbl) { lbl.textContent = `✅ ${file.name} attached`; lbl.style.color = '#1a472a'; }
           };
+
+          if (isJpeg) {
+            // JPEG certificates/ID docs/leave slips get compressed just like other photos so
+            // they don't quietly push the cloud sync over Firestore's 1MB document limit.
+            compressImageFile(file, 1200, 0.75).then(finishAttachment).catch(() => {
+              const lbl = document.getElementById(`${holderKey}-filename`);
+              if (lbl) { lbl.textContent = '⚠️ Could not read file, please try again.'; lbl.style.color = '#c0392b'; }
+            });
+            return;
+          }
+
+          const reader = new FileReader();
+          reader.onload = function(e) { finishAttachment(e.target.result); };
           reader.onerror = function() {
             window.__attachments = window.__attachments || {};
             window.__attachments[holderKey] = null;
@@ -9056,6 +9149,31 @@
           if (!authReady) { pendingPush = true; return; } // will fire once signed in
           const data = {};
           SYNC_KEYS.forEach(k => { data[k] = localStorage.getItem(k); });
+
+          // Product videos (MP4) can be several MB each - on their own they can blow past
+          // Firestore's ~1MB per-document limit, which would make the WHOLE sync fail
+          // silently and nothing (not even the QR codes, prices etc in the same write)
+          // would reach other devices. So videos are kept local-only to the device that
+          // uploaded them; applyRemoteData() below re-attaches them after every pull so
+          // they're never lost on that device, they just don't travel to other devices.
+          if (data.kharel_products) {
+            try {
+              const prods = JSON.parse(data.kharel_products);
+              let strippedAny = false;
+              const stripped = prods.map(p => {
+                if (p && p.video) { strippedAny = true; const { video, ...rest } = p; return rest; }
+                return p;
+              });
+              if (strippedAny) data.kharel_products = JSON.stringify(stripped);
+            } catch (e) { /* leave as-is if this product data can't be parsed */ }
+          }
+
+          const approxBytes = new Blob([JSON.stringify(data)]).size;
+          if (approxBytes > 900000) {
+            showSyncErrorToast('⚠️ Cloud sync ruk gaya — data bahut bada hai (' + Math.round(approxBytes / 1024) + 'KB, limit ~900KB). Shayad kisi product/QR/certificate image ki wajah se. Chhoti image use karein ya koi bada attachment hataayein - warna yeh update dusre device par nahi pahunchega.');
+            return; // would fail on the server anyway - don't burn a version number for nothing
+          }
+
           localVersion += 1;
           lastWrittenVersion = localVersion;
           nativeSetItem('kharel_sync_version', String(localVersion));
@@ -9063,7 +9181,10 @@
             version: localVersion,
             updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
             data
-          }).catch(err => console.error('[Kharel Sync] push error:', err));
+          }).catch(err => {
+            console.error('[Kharel Sync] push error:', err);
+            showSyncErrorToast('⚠️ Cloud sync fail ho gaya (' + (err && err.message ? err.message : 'unknown error') + '). Yeh change abhi sirf isi device par hai.');
+          });
         }, 800); // small debounce so rapid edits become one write
       }
 
@@ -9077,14 +9198,43 @@
       function applyRemoteData(remote) {
         suppressWrite = true;
         SYNC_KEYS.forEach(k => {
+          if (k === 'kharel_products') return; // handled specially below, to protect local-only videos
           if (remote.data && remote.data[k] !== undefined && remote.data[k] !== null) {
             nativeSetItem(k, remote.data[k]);
           }
         });
+        // Merge incoming product data with any video this device already has locally,
+        // since videos are never sent to the cloud (see pushToFirestore) and would
+        // otherwise be wiped out the next time this device pulls an update.
+        if (remote.data && remote.data.kharel_products !== undefined && remote.data.kharel_products !== null) {
+          try {
+            const incoming = JSON.parse(remote.data.kharel_products);
+            let localProds = [];
+            try { localProds = JSON.parse(localStorage.getItem('kharel_products') || '[]'); } catch (e) {}
+            const localVideoMap = {};
+            localProds.forEach(p => { if (p && p.video) localVideoMap[p.id] = p.video; });
+            const merged = incoming.map(p => (!p.video && localVideoMap[p.id]) ? { ...p, video: localVideoMap[p.id] } : p);
+            nativeSetItem('kharel_products', JSON.stringify(merged));
+          } catch (e) {
+            nativeSetItem('kharel_products', remote.data.kharel_products);
+          }
+        }
         localVersion = remote.version;
         lastWrittenVersion = remote.version;
         nativeSetItem('kharel_sync_version', String(remote.version));
         suppressWrite = false;
+      }
+
+      function showSyncErrorToast(message) {
+        const existing = document.getElementById('kharelSyncErrorToast');
+        if (existing) existing.remove();
+        const el = document.createElement('div');
+        el.id = 'kharelSyncErrorToast';
+        el.style.cssText = 'position:fixed;bottom:16px;right:16px;left:16px;max-width:420px;margin:0 auto 0 auto;background:#c0392b;color:#fff;padding:12px 18px;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.25);z-index:99999;font-size:13px;line-height:1.4;cursor:pointer;';
+        el.textContent = message;
+        el.onclick = () => el.remove();
+        document.body.appendChild(el);
+        setTimeout(() => { if (el.parentNode) el.remove(); }, 12000);
       }
 
       function showSyncToast() {
