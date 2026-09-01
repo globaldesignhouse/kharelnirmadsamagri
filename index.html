@@ -721,12 +721,60 @@
         .hero-feats { display:flex; gap:22px; justify-content:center; flex-wrap:wrap; font-size:11px; opacity:.95; }
         .hero-feats div { display:flex; flex-direction:column; align-items:center; gap:4px; }
         .hero-feats .fi { font-size:18px; }
+        /* Shown only until Admin uploads at least one slider image, so the home page
+           still looks fine on a brand-new setup. */
+        .hero-fallback {
+          background: linear-gradient(135deg,#c0392b 0%,#e67e22 100%);
+          color:#fff; border-radius:10px; padding:34px 20px; text-align:center;
+          margin: 14px 0 16px;
+        }
+        .hero-fallback .hf-title { font-size:20px; font-weight:800; margin-bottom:6px; }
+        .hero-fallback .hf-sub { font-size:13px; opacity:.9; }
+        /* Shop Now / View Cart buttons + feature badges, now living under the image
+           slider instead of inside a gradient text banner. */
+        .hero-actions-row {
+          background:#fff; border-radius:10px; padding:16px 14px; margin:0 0 16px;
+          box-shadow:0 2px 6px rgba(0,0,0,0.08);
+        }
+        .hero-actions-row .hero-btn-row { margin-bottom:14px; }
+        .hero-actions-row .hero-btn.primary { background:#2d6d48; color:#fff; }
+        .hero-actions-row .hero-btn.secondary { background:#fff; color:#2d6d48; border:1px solid #2d6d48; }
+        .hero-actions-row .hero-feats { color:#444; opacity:1; }
         .hot-deals-bar {
           background:#c0392b; color:#fff; font-size:12px; padding:8px 14px; border-radius:6px;
           margin-bottom:16px; white-space:nowrap; overflow:hidden; position:relative;
         }
         .hot-deals-bar span { display:inline-block; padding-right:60px; animation: hd-scroll 22s linear infinite; }
-        @keyframes hd-scroll { 0%{ transform:translateX(0);} 100%{ transform:translateX(-100%);} }
+        @keyframes hd-scroll { 0%{ transform:translateX(100%);} 100%{ transform:translateX(-100%);} }
+        .home-img-slider {
+          position:relative; border-radius:10px; overflow:hidden; margin:14px 0 16px;
+          background:#eee; width:100%; aspect-ratio:16/7; min-height:120px;
+        }
+        .home-img-slider .his-slide {
+          position:absolute; inset:0; opacity:0; transition:opacity .6s ease; cursor:pointer;
+        }
+        .home-img-slider .his-slide.active { opacity:1; }
+        .home-img-slider .his-slide img { width:100%; height:100%; object-fit:cover; display:block; }
+        .home-img-slider .his-caption {
+          position:absolute; left:0; right:0; bottom:0; padding:10px 14px;
+          background:linear-gradient(0deg,rgba(0,0,0,0.6),transparent); color:#fff;
+          font-size:13px; font-weight:600;
+        }
+        .home-img-slider .his-arrow {
+          position:absolute; top:50%; transform:translateY(-50%); background:rgba(0,0,0,0.35); color:#fff;
+          border:none; width:30px; height:30px; border-radius:50%; font-size:16px; cursor:pointer; z-index:3;
+          display:flex; align-items:center; justify-content:center;
+        }
+        .home-img-slider .his-arrow.prev { left:8px; }
+        .home-img-slider .his-arrow.next { right:8px; }
+        .home-img-slider .his-dots {
+          position:absolute; bottom:8px; left:0; right:0; display:flex; gap:6px; justify-content:center; z-index:3;
+        }
+        .home-img-slider .his-dot {
+          width:7px; height:7px; border-radius:50%; background:rgba(255,255,255,0.55); cursor:pointer; border:none; padding:0;
+        }
+        .home-img-slider .his-dot.active { background:#fff; width:18px; border-radius:4px; }
+        @media (max-width: 480px) { .home-img-slider { aspect-ratio:4/3; } }
         .cat-chip-row { display:flex; gap:8px; overflow-x:auto; padding-bottom:8px; margin-bottom:10px; }
         .cat-chip {
           flex:0 0 auto; padding:7px 16px; border-radius:20px; border:1px solid #ddd; background:#fff;
@@ -794,6 +842,16 @@
         .chat-input-row input { flex:1; border:1px solid #ddd; border-radius:20px; padding:8px 14px; font-size:13px; }
         .chat-input-row button { background:#1a472a; color:#fff; border:none; border-radius:20px; padding:8px 16px; font-weight:700; cursor:pointer; font-size:12px; }
         .chat-wa-btn { display:inline-flex; align-items:center; gap:6px; background:#25D366; color:#fff; border:none; border-radius:16px; padding:6px 12px; font-size:12px; font-weight:700; cursor:pointer; margin-top:6px; margin-right:6px; }
+
+        /* ===================== Homepage floating AI Chatbot ===================== */
+        .home-chat-fab { position:fixed; bottom:20px; right:20px; width:56px; height:56px; border-radius:50%; background:#1a472a; color:#fff; display:flex; align-items:center; justify-content:center; font-size:26px; box-shadow:0 4px 14px rgba(0,0,0,.3); cursor:pointer; z-index:5000; }
+        .home-chat-panel { position:fixed; bottom:88px; right:20px; width:330px; max-width:92vw; z-index:5000; box-shadow:0 8px 26px rgba(0,0,0,.28); border-radius:10px; overflow:hidden; }
+        .home-chat-panel .chat-header { justify-content:space-between; }
+        .chat-close-btn { margin-left:auto; background:rgba(255,255,255,.18); border:none; color:#fff; font-size:11px; font-weight:700; padding:5px 10px; border-radius:12px; cursor:pointer; white-space:nowrap; }
+        @media (max-width:640px) {
+          .home-chat-fab { bottom:14px; right:14px; width:50px; height:50px; font-size:22px; }
+          .home-chat-panel { bottom:72px; right:10px; left:10px; width:auto; max-width:none; }
+        }
 
         /* ===================== QR payment tiles ===================== */
         .qr-tile-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(100px,1fr)); gap:10px; margin-bottom:16px; }
@@ -1021,6 +1079,30 @@
         <div id="adminContent"></div>
       </div>
     </div>
+
+    <!-- Homepage floating AI Chatbot (shop assistant, always available - not tied to a product) -->
+    <div id="homeChatFab" class="home-chat-fab" onclick="toggleHomeChat()" title="Chat with us">🤖</div>
+    <div id="homeChatPanel" class="home-chat-panel" style="display:none;">
+      <div class="chat-box">
+        <div class="chat-header">
+          <span>🤖 Shop Assistant <span style="font-weight:400; opacity:.85; font-size:11px;">(products &amp; shop info)</span></span>
+          <button class="chat-close-btn" onclick="toggleHomeChat()" title="Close chat">✕ Close</button>
+        </div>
+        <div class="chat-msgs" id="homeChatMsgs"></div>
+        <div class="chat-quick">
+          <button onclick="homeChatbotQuick('price')">💰 Prices</button>
+          <button onclick="homeChatbotQuick('stock')">📦 Stock</button>
+          <button onclick="homeChatbotQuick('delivery')">🚚 Delivery</button>
+          <button onclick="homeChatbotQuick('return')">↩️ Returns</button>
+          <button onclick="homeChatbotQuick('payment')">💳 Payment</button>
+          <button onclick="homeChatbotQuick('human')">🙋 Talk to a person</button>
+        </div>
+        <div class="chat-input-row">
+          <input type="text" id="homeChatInput" placeholder="Ask about a product or the shop..." onkeydown="if(event.key==='Enter')homeChatbotSend()">
+          <button onclick="homeChatbotSend()">Send</button>
+        </div>
+      </div>
+    </div>
     </div>
     <div id="printArea"></div>
 
@@ -1040,10 +1122,12 @@
           'kharel_leave_requests', 'kharel_eod_closures', 'kharel_tax_rate',
           'kharel_invoice_counter', 'kharel_refund_deduction_pct', 'kharel_print_paper',
           'kharel_whatsapp_number', 'kharel_stock_movements', 'kharel_pan_number',
-          'kharel_product_reviews', 'kharel_hero_feat_messages'
+          'kharel_product_reviews', 'kharel_hero_feat_messages', 'kharel_hero_banner',
+          'kharel_hot_deals_text'
         ];
         const MEDIA_SYNC_KEYS = [
-          'kharel_products', 'kharel_certificates', 'kharel_wallet_qrs', 'kharel_bank_qr'
+          'kharel_products', 'kharel_certificates', 'kharel_wallet_qrs', 'kharel_bank_qr',
+          'kharel_home_slider_images'
         ];
         const SYNC_KEYS = MAIN_SYNC_KEYS.concat(MEDIA_SYNC_KEYS);
 
@@ -1087,6 +1171,55 @@
         function saveHeroFeatMessages() {
           localStorage.setItem('kharel_hero_feat_messages', JSON.stringify(HERO_FEATS));
         }
+        // Home page hero banner text (tagline, headline, sub-line). Admin can edit each
+        // from Admin Dashboard > Settings. The trust-badge icons row below it is NOT
+        // editable here on purpose - it always keeps the same 5 fixed features.
+        const HERO_BANNER_DEFAULTS = {
+          tagline: 'QUALITY MATERIALS · FAIR PRICES',
+          headlineMain: 'Built to ',
+          headlineHighlight: 'Last',
+          sub: 'Doors, Windows, Cement & everything for your construction'
+        };
+        function loadHeroBannerSettings() {
+          try {
+            return { ...HERO_BANNER_DEFAULTS, ...(JSON.parse(localStorage.getItem('kharel_hero_banner') || '{}')) };
+          } catch (e) { return { ...HERO_BANNER_DEFAULTS }; }
+        }
+        let HERO_BANNER = loadHeroBannerSettings();
+        function saveHeroBannerSettings() {
+          localStorage.setItem('kharel_hero_banner', JSON.stringify(HERO_BANNER));
+        }
+
+        // Hot-deals sliding text bar (the red strip that scrolls right-to-left under the
+        // banner). By default it auto-generates from live promotions; Admin can switch it
+        // to a fixed custom message instead from Admin Dashboard > Settings.
+        function loadHotDealsSettings() {
+          try {
+            return JSON.parse(localStorage.getItem('kharel_hot_deals_text') || '{}') || {};
+          } catch (e) { return {}; }
+        }
+        let HOT_DEALS_SETTINGS = loadHotDealsSettings();
+        function saveHotDealsSettings() {
+          localStorage.setItem('kharel_hot_deals_text', JSON.stringify(HOT_DEALS_SETTINGS));
+        }
+
+        // Home page image slider (banner carousel). Admin uploads images from Admin
+        // Dashboard > Settings; they auto-rotate above/below the hero banner.
+        function loadHomeSliderImages() {
+          try { return JSON.parse(localStorage.getItem('kharel_home_slider_images')) || []; } catch (e) { return []; }
+        }
+        let homeSliderImages = loadHomeSliderImages();
+        function saveHomeSliderImages() {
+          try {
+            localStorage.setItem('kharel_home_slider_images', JSON.stringify(homeSliderImages));
+          } catch (e) {
+            alert('⚠️ Could not save - browser storage is full. Try a smaller image.');
+          }
+        }
+        let nextSliderImageId = homeSliderImages.reduce((m, s) => Math.max(m, s.id || 0), 0) + 1;
+        let homeSliderIndex = 0;
+        let homeSliderTimer = null;
+
         function showHeroFeatMessage(key) {
           const f = HERO_FEATS[key];
           if (!f) return;
@@ -1784,7 +1917,10 @@
             kharel_product_reviews: 'Product reviews',
             kharel_wallet_qrs: 'Wallet QR codes',
             kharel_bank_qr: 'Bank QR / details',
-            kharel_hero_feat_messages: 'Home page badge messages'
+            kharel_hero_feat_messages: 'Home page badge messages',
+            kharel_hero_banner: 'Home page banner text',
+            kharel_hot_deals_text: 'Home page sliding text',
+            kharel_home_slider_images: 'Home page image slider'
           };
           const rows = SYNC_KEYS.map(k => ({ key: k, label: LABELS[k] || k, bytes: (localStorage.getItem(k) || '').length, group: MEDIA_SYNC_KEYS.includes(k) ? 'media' : 'main' }))
             .sort((a, b) => b.bytes - a.bytes);
@@ -2179,12 +2315,72 @@
         }
 
         function hotDealsText() {
+          if (HOT_DEALS_SETTINGS.mode === 'custom' && HOT_DEALS_SETTINGS.text && HOT_DEALS_SETTINGS.text.trim()) {
+            return HOT_DEALS_SETTINGS.text.trim();
+          }
           const onPromo = products.filter(isOnPromotion);
           if (onPromo.length) {
             const parts = onPromo.slice(0, 6).map(p => `${p.name} at Rs ${getEffectivePrice(p).toLocaleString()} (${p.promotion.discountPercent}% off)`);
             return `🔥 HOT DEALS  •  ${parts.join('   •   ')}   •   Free delivery on bulk orders`;
           }
           return `🔥 Quality building materials at the best rates  •  Free delivery on bulk orders  •  Trusted by local contractors`;
+        }
+
+        // ---------- Home page image slider ----------
+        function renderHomeImageSlider() {
+          const el = document.getElementById('homeImgSliderSection');
+          if (!el) return;
+          if (homeSliderTimer) { clearInterval(homeSliderTimer); homeSliderTimer = null; }
+          if (!homeSliderImages.length) {
+            el.innerHTML = `
+              <div class="hero-fallback">
+                <div class="hf-title">🏗️ ${escapeHtml(HERO_BANNER.headlineMain || 'Kharel Nirmad Samagri Udhyog')}${escapeHtml(HERO_BANNER.headlineHighlight || '')}</div>
+                <div class="hf-sub">${escapeHtml(HERO_BANNER.sub || 'Quality building materials at the best rates')}</div>
+              </div>
+            `;
+            return;
+          }
+          if (homeSliderIndex >= homeSliderImages.length) homeSliderIndex = 0;
+          el.innerHTML = `
+            <div class="home-img-slider" id="homeImgSlider">
+              ${homeSliderImages.map((s, i) => `
+                <div class="his-slide ${i === homeSliderIndex ? 'active' : ''}" data-idx="${i}" onclick="${s.link ? `homeSliderClick('${escapeAttr(s.link)}')` : ''}">
+                  <img src="${s.image}" alt="${escapeAttr(s.caption || 'Banner')}">
+                  ${s.caption ? `<div class="his-caption">${escapeHtml(s.caption)}</div>` : ''}
+                </div>
+              `).join('')}
+              ${homeSliderImages.length > 1 ? `
+                <button class="his-arrow prev" onclick="homeSliderStep(-1)">‹</button>
+                <button class="his-arrow next" onclick="homeSliderStep(1)">›</button>
+                <div class="his-dots">
+                  ${homeSliderImages.map((s, i) => `<button class="his-dot ${i === homeSliderIndex ? 'active' : ''}" onclick="homeSliderGoTo(${i})"></button>`).join('')}
+                </div>
+              ` : ''}
+            </div>
+          `;
+          if (homeSliderImages.length > 1) {
+            homeSliderTimer = setInterval(() => homeSliderStep(1), 4500);
+          }
+        }
+        function homeSliderStep(dir) {
+          if (!homeSliderImages.length) return;
+          homeSliderIndex = (homeSliderIndex + dir + homeSliderImages.length) % homeSliderImages.length;
+          updateHomeSliderDom();
+        }
+        function homeSliderGoTo(i) {
+          homeSliderIndex = i;
+          updateHomeSliderDom();
+          if (homeSliderTimer) { clearInterval(homeSliderTimer); homeSliderTimer = setInterval(() => homeSliderStep(1), 4500); }
+        }
+        function updateHomeSliderDom() {
+          const wrap = document.getElementById('homeImgSlider');
+          if (!wrap) return;
+          wrap.querySelectorAll('.his-slide').forEach((n, i) => n.classList.toggle('active', i === homeSliderIndex));
+          wrap.querySelectorAll('.his-dot').forEach((n, i) => n.classList.toggle('active', i === homeSliderIndex));
+        }
+        function homeSliderClick(link) {
+          if (!link) return;
+          window.open(link, '_blank');
         }
 
         function renderHomeHero() {
@@ -2201,10 +2397,8 @@
           `).join('');
 
           el.innerHTML = `
-            <div class="hero-banner">
-              <div class="hero-tagline">QUALITY MATERIALS · FAIR PRICES</div>
-              <div class="hero-headline">Built to <span>Last</span></div>
-              <div class="hero-sub">Doors, Windows, Cement &amp; everything for your construction</div>
+            <div id="homeImgSliderSection"></div>
+            <div class="hero-actions-row">
               <div class="hero-btn-row">
                 <button class="hero-btn primary" onclick="document.getElementById('searchInput').scrollIntoView({behavior:'smooth'})">Shop Now</button>
                 <button class="hero-btn secondary" onclick="switchTab('cart')">View Cart</button>
@@ -2221,6 +2415,7 @@
             <div class="cat-chip-row" id="catChipRow">${catChips}</div>
             ${cats.length ? `<div class="section-title">🛍️ Shop by Category</div><div class="cat-tile-grid">${catTiles}</div>` : ''}
           `;
+          renderHomeImageSlider();
         }
 
         function heroFilterCategory(cat, chipEl) {
@@ -5806,6 +6001,91 @@
           return html;
         }
 
+        // ---------- Homepage Floating AI Chatbot ----------
+        // A general shop assistant available on the homepage at all times (not tied to
+        // opening a product first). If the customer names a product, it hands off to that
+        // product's own chatbotAnswer() so replies use its live data (price, stock, etc).
+        // Otherwise it answers shop-wide FAQs (delivery, returns, payment, human handoff).
+        let homeChatHistory = null;
+
+        function toggleHomeChat() {
+          const panel = document.getElementById('homeChatPanel');
+          if (!panel) return;
+          const opening = panel.style.display === 'none';
+          panel.style.display = opening ? 'block' : 'none';
+          if (opening) initHomeChatWidget();
+        }
+
+        function initHomeChatWidget() {
+          if (!homeChatHistory) {
+            homeChatHistory = [{ from: 'bot', text: `Hi! I'm your shop assistant. Ask me about a product (just type its name), or about price, stock, warranty, delivery, returns and payment.` }];
+          }
+          paintHomeChat();
+        }
+
+        function paintHomeChat() {
+          const el = document.getElementById('homeChatMsgs');
+          if (!el) return;
+          el.innerHTML = (homeChatHistory || []).map(m => `<div class="chat-msg ${m.from}">${m.text}</div>`).join('');
+          el.scrollTop = el.scrollHeight;
+        }
+
+        function homeChatbotQuick(key) {
+          const labels = { price: 'What are your prices?', stock: 'What is in stock?', delivery: 'Do you deliver?', return: 'What is your return policy?', payment: 'What payment methods do you accept?', human: 'I want to talk to a person' };
+          homeChatbotHandle(labels[key] || key);
+        }
+
+        function homeChatbotSend() {
+          const input = document.getElementById('homeChatInput');
+          const text = input.value.trim();
+          if (!text) return;
+          input.value = '';
+          homeChatbotHandle(text);
+        }
+
+        function homeChatbotHandle(text) {
+          homeChatHistory = homeChatHistory || [];
+          homeChatHistory.push({ from: 'user', text: escapeHtml(text) });
+          const reply = homeChatbotAnswer(text);
+          homeChatHistory.push({ from: 'bot', text: reply });
+          paintHomeChat();
+        }
+
+        function homeChatbotAnswer(question) {
+          const q = question.toLowerCase();
+          const waStaff = chatWaButtons();
+
+          const matched = (products || []).find(p => p.name && q.includes(p.name.toLowerCase()));
+          if (matched) {
+            return `<strong>${escapeHtml(matched.name)}:</strong><br>` + chatbotAnswer(matched, question) +
+              `<br><span style="font-size:11px; color:#888;">Tip: open the product for photos &amp; reviews.</span>`;
+          }
+
+          if (/\b(price|cost|kitna|rate|paisa|dam|kimat)\b/.test(q)) {
+            return `Prices vary by product - tell me the product name (e.g. "price of cement") and I'll look it up, or browse the Products tab.`;
+          }
+          if (/\b(stock|available|in stock|hai ki nahi|hai kya)\b/.test(q)) {
+            return `Tell me which product you're asking about and I'll check its stock for you.`;
+          }
+          if (/\b(warranty|guarantee)\b/.test(q)) {
+            return `Warranty depends on the product - name a product and I'll check its warranty for you.`;
+          }
+          if (/\b(deliver|delivery|shipping|pahucha)\b/.test(q)) {
+            return `Yes, we deliver. Delivery is arranged after your order is confirmed - our team will contact you on the phone number you provide at checkout to arrange timing and cost.`;
+          }
+          if (/\b(return|refund|exchange|wapas)\b/.test(q)) {
+            return `If there's an issue with your order, please contact us with your invoice number and we'll help with a return, exchange or refund - just reach out on WhatsApp below.<br>${waStaff}`;
+          }
+          if (/\b(pay|payment|cash|wallet|bank|udhar|card)\b/.test(q)) {
+            return `We accept Cash on Delivery, Debit/Credit Card, Bank Transfer, Digital Wallets (QR scan) and Udhar (pay later) for trusted customers. You can choose your preferred option at Checkout.`;
+          }
+          if (/\b(human|staff|admin|agent|person|baat|call|whatsapp)\b/.test(q)) {
+            return `Sure - you can message our team directly:<br>${waStaff}`;
+          }
+
+          return `I can help with product prices, stock, warranty, delivery, returns and payment - just name a product or ask about the shop. Didn't quite catch that - could you rephrase, or talk to our team directly?<br>${waStaff}`;
+        }
+
         // ---------- Admin: Manage extra photos, video and description ----------
         // Admin only. Lets Admin add more than one photo, attach an MP4 video, and write a
         // description that customers/employees see in the full-screen product viewer above.
@@ -6142,6 +6422,55 @@
                 }).join('')}
               </div>
 
+              <h3 style="margin: 20px 0 12px; font-size: 14px; border-bottom: 2px solid #2d6d48; padding-bottom: 8px;">🎯 Home Page Fallback Banner Text</h3>
+              <div style="max-width: 500px; margin-bottom: 24px;">
+                <p style="font-size:12px; color:#888; margin-bottom:12px;">The home page top banner is now the sliding image banner below (upload images in "Home Page Image Slider"). This text only shows as a placeholder if no slider images have been uploaded yet. The 5 tappable feature icons under the slider (Delivery Available, Trusted Quality, etc.) stay as they are - edit their popup messages in "Home Page Badge Messages" above.</p>
+                <div style="background:#f9f9f9; border-radius:8px; padding:14px;">
+                  <label style="display:block; font-weight:600; margin-bottom:6px;">Small Tagline (top line)</label>
+                  <input type="text" class="form-input" id="heroBannerTagline" value="${escapeAttr(HERO_BANNER.tagline)}" style="margin-bottom:10px;">
+                  <label style="display:block; font-weight:600; margin-bottom:6px;">Headline</label>
+                  <div style="display:flex; gap:8px; margin-bottom:4px;">
+                    <input type="text" class="form-input" id="heroBannerHeadlineMain" value="${escapeAttr(HERO_BANNER.headlineMain)}" placeholder="e.g. Built to ">
+                    <input type="text" class="form-input" id="heroBannerHeadlineHighlight" value="${escapeAttr(HERO_BANNER.headlineHighlight)}" placeholder="e.g. Last (highlighted)">
+                  </div>
+                  <p style="font-size:11px; color:#999; margin-bottom:10px;">Second box is shown in a highlighted color (e.g. "Built to" + "Last").</p>
+                  <label style="display:block; font-weight:600; margin-bottom:6px;">Sub-text (line below headline)</label>
+                  <input type="text" class="form-input" id="heroBannerSub" value="${escapeAttr(HERO_BANNER.sub)}" style="margin-bottom:10px;">
+                  <button class="checkout-btn" style="width:auto; padding:8px 16px;" onclick="adminSaveHeroBanner()">💾 Save Banner Text</button>
+                  <button class="checkout-btn" style="width:auto; padding:8px 16px; background:#888;" onclick="adminResetHeroBanner()">↺ Reset to Default</button>
+                </div>
+              </div>
+
+              <h3 style="margin: 20px 0 12px; font-size: 14px; border-bottom: 2px solid #2d6d48; padding-bottom: 8px;">➡️ Sliding Text (Hot Deals Strip)</h3>
+              <div style="max-width: 500px; margin-bottom: 24px;">
+                <p style="font-size:12px; color:#888; margin-bottom:12px;">This is the red strip that scrolls from right to left just under the banner. By default it auto-lists current promotions, or you can set your own fixed message (e.g. "Building material free delivery by local contractors").</p>
+                <div style="background:#f9f9f9; border-radius:8px; padding:14px;">
+                  <label style="display:flex; align-items:center; gap:8px; font-size:13px; cursor:pointer; margin-bottom:10px;">
+                    <input type="checkbox" id="hotDealsCustomToggle" ${HOT_DEALS_SETTINGS.mode === 'custom' ? 'checked' : ''} onchange="document.getElementById('hotDealsCustomWrap').style.display = this.checked ? 'block' : 'none';">
+                    <span><strong>Use my own custom text</strong> (uncheck to auto-generate from live promotions)</span>
+                  </label>
+                  <div id="hotDealsCustomWrap" style="display:${HOT_DEALS_SETTINGS.mode === 'custom' ? 'block' : 'none'};">
+                    <textarea class="form-input" id="hotDealsCustomText" rows="2" placeholder="e.g. 🔥 Building material free delivery by local contractors" style="margin-bottom:10px;">${escapeHtml(HOT_DEALS_SETTINGS.text || '')}</textarea>
+                  </div>
+                  <button class="checkout-btn" style="width:auto; padding:8px 16px;" onclick="adminSaveHotDealsText()">💾 Save</button>
+                </div>
+              </div>
+
+              <h3 style="margin: 20px 0 12px; font-size: 14px; border-bottom: 2px solid #2d6d48; padding-bottom: 8px;">🖼️ Home Page Image Slider</h3>
+              <div style="max-width: 520px; margin-bottom: 24px;">
+                <p style="font-size:12px; color:#888; margin-bottom:12px;">Upload photos (offers, new stock, storefront, etc.) to show as a rotating slider on the home page. Add a caption or a link (optional) for each.</p>
+                <div id="homeSliderAdminList" style="display:flex; flex-wrap:wrap; gap:12px; margin-bottom:16px;"></div>
+                <div style="background:#f9f9f9; border-radius:8px; padding:14px;">
+                  <label style="display:block; font-weight:600; margin-bottom:6px;">Image</label>
+                  <input type="file" accept="image/*" id="newSliderImage" style="margin-bottom:10px;">
+                  <label style="display:block; font-weight:600; margin-bottom:6px;">Caption <span style="font-weight:400; color:#888;">(optional, shown over the image)</span></label>
+                  <input type="text" class="form-input" id="newSliderCaption" placeholder="e.g. Free delivery on bulk orders" style="margin-bottom:10px;">
+                  <label style="display:block; font-weight:600; margin-bottom:6px;">Link <span style="font-weight:400; color:#888;">(optional, opens when tapped)</span></label>
+                  <input type="text" class="form-input" id="newSliderLink" placeholder="e.g. https://wa.me/... or leave blank" style="margin-bottom:10px;">
+                  <button class="checkout-btn" style="width:auto; padding:8px 16px;" onclick="adminAddSliderImage()">➕ Add Slide</button>
+                </div>
+              </div>
+
               <h3 style="margin: 20px 0 12px; font-size: 14px; border-bottom: 2px solid #1565c0; padding-bottom: 8px; color:#1565c0;">🗜️ Cloud Sync Storage</h3>
               <div style="max-width: 450px; margin-bottom: 24px; background:#eef5fb; border:1px solid #bcdcf2; border-radius:8px; padding:16px;">
                 <p style="font-size:13px; color:#444; margin-bottom:10px;">If you see a "Cloud sync ruk gaya - data bahut bada hai" warning, it usually means some product/QR/certificate images were uploaded before image compression was added and are still large. Click below to shrink them - this is safe and doesn't remove anything, only re-compresses images that are already too big.</p>
@@ -6199,6 +6528,7 @@
           document.getElementById('adminContent').innerHTML = html;
           renderWalletQRAdminList();
           renderBankQRAdminPreview();
+          renderSliderImagesAdminList();
         }
 
         function adminSaveStaffPhoneNumber() {
@@ -6217,6 +6547,100 @@
           HERO_FEATS[key].message = val;
           saveHeroFeatMessages();
           alert('✓ Badge message updated.');
+        }
+
+        // ---------- Home page banner text / sliding text / image slider (admin) ----------
+        function adminSaveHeroBanner() {
+          if (!isAdmin()) return;
+          const tagline = document.getElementById('heroBannerTagline').value.trim();
+          const headlineMain = document.getElementById('heroBannerHeadlineMain').value;
+          const headlineHighlight = document.getElementById('heroBannerHeadlineHighlight').value.trim();
+          const sub = document.getElementById('heroBannerSub').value.trim();
+          HERO_BANNER = { tagline, headlineMain, headlineHighlight, sub };
+          saveHeroBannerSettings();
+          renderHomeHero();
+          alert('✓ Banner text saved.');
+        }
+        function adminResetHeroBanner() {
+          if (!isAdmin()) return;
+          if (!confirm('Reset banner text back to default?')) return;
+          HERO_BANNER = { ...HERO_BANNER_DEFAULTS };
+          saveHeroBannerSettings();
+          renderAdminSettings();
+          renderHomeHero();
+        }
+
+        function adminSaveHotDealsText() {
+          if (!isAdmin()) return;
+          const useCustom = document.getElementById('hotDealsCustomToggle').checked;
+          const text = document.getElementById('hotDealsCustomText').value.trim();
+          if (useCustom && !text) { alert('Please type the custom text, or uncheck the box to use auto-generated text.'); return; }
+          HOT_DEALS_SETTINGS = { mode: useCustom ? 'custom' : 'auto', text };
+          saveHotDealsSettings();
+          renderHomeHero();
+          alert('✓ Sliding text saved.');
+        }
+
+        function renderSliderImagesAdminList() {
+          const el = document.getElementById('homeSliderAdminList');
+          if (!el) return;
+          if (!homeSliderImages.length) {
+            el.innerHTML = `<div style="color:#999; font-style:italic; font-size:13px;">No slider images yet.</div>`;
+            return;
+          }
+          el.innerHTML = homeSliderImages.map((s, i) => `
+            <div style="text-align:center; border:1px solid #eee; border-radius:8px; padding:8px; width:150px;">
+              <img src="${s.image}" style="width:134px; height:80px; object-fit:cover; border-radius:4px;">
+              ${s.caption ? `<div style="font-size:11px; font-weight:600; margin-top:4px; word-break:break-word;">${escapeHtml(s.caption)}</div>` : ''}
+              <div style="display:flex; gap:4px; justify-content:center; margin-top:4px;">
+                <button style="font-size:11px; color:#1565c0; background:none; border:none; cursor:pointer;" ${i === 0 ? 'disabled' : ''} onclick="adminMoveSliderImage(${i}, -1)">⬅️</button>
+                <button style="font-size:11px; color:#1565c0; background:none; border:none; cursor:pointer;" ${i === homeSliderImages.length - 1 ? 'disabled' : ''} onclick="adminMoveSliderImage(${i}, 1)">➡️</button>
+                <button style="font-size:11px; color:#c0392b; background:none; border:none; cursor:pointer;" onclick="adminDeleteSliderImage(${s.id})">🗑️</button>
+              </div>
+            </div>
+          `).join('');
+        }
+
+        function adminAddSliderImage() {
+          if (!isAdmin()) return;
+          const fileEl = document.getElementById('newSliderImage');
+          const captionEl = document.getElementById('newSliderCaption');
+          const linkEl = document.getElementById('newSliderLink');
+          const file = fileEl.files && fileEl.files[0];
+          if (!file) { alert('Please choose an image.'); return; }
+          const caption = captionEl.value.trim();
+          const link = linkEl.value.trim();
+          compressImageFile(file, 1200, 0.82, 'image/jpeg').then((dataUrl) => {
+            homeSliderImages.push({ id: nextSliderImageId++, image: dataUrl, caption, link });
+            saveHomeSliderImages();
+            renderSliderImagesAdminList();
+            renderHomeHero();
+            fileEl.value = '';
+            captionEl.value = '';
+            linkEl.value = '';
+            alert('✓ Slide added.');
+          });
+        }
+
+        function adminMoveSliderImage(index, dir) {
+          if (!isAdmin()) return;
+          const newIndex = index + dir;
+          if (newIndex < 0 || newIndex >= homeSliderImages.length) return;
+          const tmp = homeSliderImages[index];
+          homeSliderImages[index] = homeSliderImages[newIndex];
+          homeSliderImages[newIndex] = tmp;
+          saveHomeSliderImages();
+          renderSliderImagesAdminList();
+          renderHomeHero();
+        }
+
+        function adminDeleteSliderImage(id) {
+          if (!isAdmin()) return;
+          if (!confirm('Remove this slide?')) return;
+          homeSliderImages = homeSliderImages.filter(s => s.id !== id);
+          saveHomeSliderImages();
+          renderSliderImagesAdminList();
+          renderHomeHero();
         }
 
         // ---------- Digital Wallet QR management ----------
