@@ -1025,6 +1025,28 @@
     <div id="printArea"></div>
 
     <script>
+        // ---------- Cloud sync key groups (shared with the sync layer script at the
+        // bottom of this file) ----------
+        // Firestore refuses any single document over ~1MB. Everything used to live in
+        // ONE document, so once total data crossed ~900KB (our safety buffer) sync
+        // would stop. Splitting into two documents - "main" (small operational data)
+        // and "media" (images/QR codes/certificates, which are usually the biggest) -
+        // effectively DOUBLES total capacity, since each document gets its own ~1MB
+        // budget. IMPORTANT: this needs one extra line in your Firestore rules to
+        // allow the new "media" document - see the rules note in chat.
+        const MAIN_SYNC_KEYS = [
+          'kharel_users', 'kharel_orders', 'kharel_wastage',
+          'kharel_employee_wastage_perms', 'kharel_categories',
+          'kharel_leave_requests', 'kharel_eod_closures', 'kharel_tax_rate',
+          'kharel_invoice_counter', 'kharel_refund_deduction_pct', 'kharel_print_paper',
+          'kharel_whatsapp_number', 'kharel_stock_movements', 'kharel_pan_number',
+          'kharel_product_reviews', 'kharel_hero_feat_messages'
+        ];
+        const MEDIA_SYNC_KEYS = [
+          'kharel_products', 'kharel_certificates', 'kharel_wallet_qrs', 'kharel_bank_qr'
+        ];
+        const SYNC_KEYS = MAIN_SYNC_KEYS.concat(MEDIA_SYNC_KEYS);
+
         // WhatsApp / contact phone number. Admin can change this from Admin Dashboard > Settings.
         let PHONE = localStorage.getItem('kharel_whatsapp_number') || "9806503912";
         function savePhoneNumber() {
@@ -1736,6 +1758,71 @@
         // are still large - fixes the common case where images were uploaded BEFORE
         // compression was added to the app, and are now the reason cloud sync is
         // blocked for being oversized. PDFs and already-small images are left alone.
+        // Shows exactly how big each piece of synced data is, so it's obvious which
+        // one is pushing the total over Firestore's ~900KB safe limit (useful when
+        // "Optimize All Images" alone isn't enough - e.g. a large PDF certificate or
+        // years of accumulated order history can't be shrunk by image compression).
+        function adminShowStorageBreakdown() {
+          if (!isAdmin()) return;
+          const LABELS = {
+            kharel_products: 'Products (photos + gallery)',
+            kharel_users: 'Users',
+            kharel_orders: 'Orders',
+            kharel_wastage: 'Wastage records',
+            kharel_employee_wastage_perms: 'Employee wastage permissions',
+            kharel_categories: 'Categories',
+            kharel_certificates: 'Certificates (incl. PDFs)',
+            kharel_leave_requests: 'Leave requests (incl. attachments)',
+            kharel_eod_closures: 'End-of-day closures',
+            kharel_tax_rate: 'Tax rate',
+            kharel_invoice_counter: 'Invoice counter',
+            kharel_refund_deduction_pct: 'Refund deduction %',
+            kharel_print_paper: 'Print paper setting',
+            kharel_whatsapp_number: 'WhatsApp number',
+            kharel_stock_movements: 'Stock movements',
+            kharel_pan_number: 'PAN number',
+            kharel_product_reviews: 'Product reviews',
+            kharel_wallet_qrs: 'Wallet QR codes',
+            kharel_bank_qr: 'Bank QR / details',
+            kharel_hero_feat_messages: 'Home page badge messages'
+          };
+          const rows = SYNC_KEYS.map(k => ({ key: k, label: LABELS[k] || k, bytes: (localStorage.getItem(k) || '').length, group: MEDIA_SYNC_KEYS.includes(k) ? 'media' : 'main' }))
+            .sort((a, b) => b.bytes - a.bytes);
+          const mainTotal = rows.filter(r => r.group === 'main').reduce((s, r) => s + r.bytes, 0);
+          const mediaTotal = rows.filter(r => r.group === 'media').reduce((s, r) => s + r.bytes, 0);
+
+          const existing = document.getElementById('storageBreakdownOverlay');
+          if (existing) existing.remove();
+          const overlay = document.createElement('div');
+          overlay.className = 'modal-overlay';
+          overlay.id = 'storageBreakdownOverlay';
+          overlay.onclick = function (e) { if (e.target === overlay) overlay.remove(); };
+          overlay.innerHTML = `
+            <div class="modal-content" style="max-width:480px; width:92%;">
+              <div class="modal-header">
+                <span>📊 Storage Breakdown</span>
+                <button class="close-modal" onclick="this.closest('.modal-overlay').remove()">×</button>
+              </div>
+              <p style="font-size:13px; color:${mainTotal > 900000 ? '#c0392b' : '#1a472a'}; font-weight:600; margin:10px 0 2px;">
+                📁 Main data: ${Math.round(mainTotal / 1024)}KB / ~900KB ${mainTotal > 900000 ? '⚠️ OVER' : '✓'}
+              </p>
+              <p style="font-size:13px; color:${mediaTotal > 900000 ? '#c0392b' : '#1a472a'}; font-weight:600; margin:2px 0 10px;">
+                🖼️ Images/QR/certificates: ${Math.round(mediaTotal / 1024)}KB / ~900KB ${mediaTotal > 900000 ? '⚠️ OVER' : '✓'}
+              </p>
+              <div style="max-height:50vh; overflow-y:auto;">
+                ${rows.filter(r => r.bytes > 0).map(r => `
+                  <div style="display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid #eee; font-size:13px;">
+                    <span>${r.group === 'media' ? '🖼️' : '📁'} ${escapeHtml(r.label)}</span>
+                    <strong style="color:${r.bytes > 200000 ? '#c0392b' : '#333'};">${r.bytes > 1024 ? Math.round(r.bytes / 1024) + 'KB' : r.bytes + 'B'}</strong>
+                  </div>
+                `).join('')}
+              </div>
+              <p style="font-size:12px; color:#888; margin-top:12px;">Data now syncs as two separate parts (Main and Images), each with its own ~900KB budget. Whichever part shows "OVER" above is blocking sync - if it's Images, use "Optimize All Images"; if it's Main and Certificates/Leave requests are large, check for PDF attachments (can't be auto-compressed).</p>
+            </div>
+          `;
+          document.body.appendChild(overlay);
+        }
+
         async function adminOptimizeAllImages() {
           if (!isAdmin()) return;
           if (!confirm('This will re-compress large images already saved in the app (products, QR codes, certificates) to shrink storage. This can take a moment for many images. Continue?')) return;
@@ -6059,6 +6146,7 @@
               <div style="max-width: 450px; margin-bottom: 24px; background:#eef5fb; border:1px solid #bcdcf2; border-radius:8px; padding:16px;">
                 <p style="font-size:13px; color:#444; margin-bottom:10px;">If you see a "Cloud sync ruk gaya - data bahut bada hai" warning, it usually means some product/QR/certificate images were uploaded before image compression was added and are still large. Click below to shrink them - this is safe and doesn't remove anything, only re-compresses images that are already too big.</p>
                 <button class="checkout-btn" id="optimizeImagesBtn" style="width:auto; padding:10px 16px;" onclick="adminOptimizeAllImages()">🗜️ Optimize All Images</button>
+                <button class="checkout-btn" style="width:auto; padding:10px 16px; background:#1565c0;" onclick="adminShowStorageBreakdown()">📊 Show Storage Breakdown</button>
               </div>
 
               <h3 style="margin: 20px 0 12px; font-size: 14px; border-bottom: 2px solid #c0392b; padding-bottom: 8px; color:#c0392b;">🗑️ Clear Sales & Orders Data</h3>
@@ -9265,43 +9353,61 @@
       firebase.initializeApp(firebaseConfig);
       const db = firebase.firestore();
       const auth = firebase.auth();
-      const docRef = db.collection('kharel_store').doc('main');
-
-      // All the business-data keys this app keeps in localStorage. Anything
-      // NOT in this list (e.g. kharel_my_order_ids, which is per-browser only)
-      // stays local and is never synced.
-      const SYNC_KEYS = [
-        'kharel_products', 'kharel_users', 'kharel_orders', 'kharel_wastage',
-        'kharel_employee_wastage_perms', 'kharel_categories', 'kharel_certificates',
-        'kharel_leave_requests', 'kharel_eod_closures', 'kharel_tax_rate',
-        'kharel_invoice_counter', 'kharel_refund_deduction_pct', 'kharel_print_paper',
-        'kharel_whatsapp_number', 'kharel_stock_movements', 'kharel_pan_number',
-        'kharel_product_reviews', 'kharel_wallet_qrs', 'kharel_bank_qr',
-        'kharel_hero_feat_messages'
-      ];
-
       const nativeSetItem = localStorage.setItem.bind(localStorage);
-      let localVersion = parseInt(localStorage.getItem('kharel_sync_version')) || 0;
-      let lastWrittenVersion = localVersion;
       let suppressWrite = false;
-      let pushTimer = null;
       let authReady = false;
-      let pendingPush = false;
 
-      function pushToFirestore() {
-        clearTimeout(pushTimer);
-        pushTimer = setTimeout(() => {
-          if (!authReady) { pendingPush = true; return; } // will fire once signed in
+      // Data now syncs as TWO Firestore documents instead of one, so it isn't all
+      // squeezed under a single ~1MB limit:
+      //   - "main"  -> small operational data (orders, users, categories, etc)
+      //   - "media" -> images/QR codes/certificates (usually the biggest data)
+      // MAIN_SYNC_KEYS / MEDIA_SYNC_KEYS are declared once, near the top of this
+      // file, and shared with the Admin Settings "Optimize Images" / "Storage
+      // Breakdown" tools.
+      // NOTE: this needs a matching Firestore rule for the new "media" document
+      // (see CHATBOT/FIREBASE setup notes) — without it, media sync will fail
+      // with a "permission-denied" error.
+      const syncGroups = [
+        {
+          id: 'main',
+          keys: MAIN_SYNC_KEYS,
+          ref: db.collection('kharel_store').doc('main'),
+          versionLSKey: 'kharel_sync_version',
+          localVersion: parseInt(localStorage.getItem('kharel_sync_version')) || 0,
+          lastWrittenVersion: 0,
+          pushTimer: null,
+          pendingPush: false
+        },
+        {
+          id: 'media',
+          keys: MEDIA_SYNC_KEYS,
+          ref: db.collection('kharel_store').doc('media'),
+          versionLSKey: 'kharel_sync_version_media',
+          localVersion: parseInt(localStorage.getItem('kharel_sync_version_media')) || 0,
+          lastWrittenVersion: 0,
+          pushTimer: null,
+          pendingPush: false
+        }
+      ];
+      syncGroups.forEach(g => { g.lastWrittenVersion = g.localVersion; });
+
+      function groupForKey(key) {
+        return syncGroups.find(g => g.keys.includes(key));
+      }
+
+      function pushGroupToFirestore(group) {
+        clearTimeout(group.pushTimer);
+        group.pushTimer = setTimeout(() => {
+          if (!authReady) { group.pendingPush = true; return; } // will fire once signed in
           const data = {};
-          SYNC_KEYS.forEach(k => { data[k] = localStorage.getItem(k); });
+          group.keys.forEach(k => { data[k] = localStorage.getItem(k); });
 
           // Product videos (MP4) can be several MB each - on their own they can blow past
           // Firestore's ~1MB per-document limit, which would make the WHOLE sync fail
-          // silently and nothing (not even the QR codes, prices etc in the same write)
-          // would reach other devices. So videos are kept local-only to the device that
-          // uploaded them; applyRemoteData() below re-attaches them after every pull so
-          // they're never lost on that device, they just don't travel to other devices.
-          if (data.kharel_products) {
+          // silently. So videos are kept local-only to the device that uploaded them;
+          // applyRemoteData() below re-attaches them after every pull so they're never
+          // lost on that device, they just don't travel to other devices.
+          if (group.id === 'media' && data.kharel_products) {
             try {
               const prods = JSON.parse(data.kharel_products);
               let strippedAny = false;
@@ -9315,19 +9421,20 @@
 
           const approxBytes = new Blob([JSON.stringify(data)]).size;
           if (approxBytes > 900000) {
-            showSyncErrorToast('⚠️ Cloud sync ruk gaya — data bahut bada hai (' + Math.round(approxBytes / 1024) + 'KB, limit ~900KB). Shayad kisi product/QR/certificate image ki wajah se. Chhoti image use karein ya koi bada attachment hataayein - warna yeh update dusre device par nahi pahunchega.');
+            const partLabel = group.id === 'media' ? 'Images/QR/certificates' : 'Main data';
+            showSyncErrorToast('⚠️ Cloud sync ruk gaya (' + partLabel + ') — ' + Math.round(approxBytes / 1024) + 'KB, limit ~900KB is part ke liye. Admin Settings > "Show Storage Breakdown" khol kar dekhein kaunsi cheez badi hai.');
             return; // would fail on the server anyway - don't burn a version number for nothing
           }
 
-          localVersion += 1;
-          lastWrittenVersion = localVersion;
-          nativeSetItem('kharel_sync_version', String(localVersion));
-          docRef.set({
-            version: localVersion,
+          group.localVersion += 1;
+          group.lastWrittenVersion = group.localVersion;
+          nativeSetItem(group.versionLSKey, String(group.localVersion));
+          group.ref.set({
+            version: group.localVersion,
             updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
             data
           }).catch(err => {
-            console.error('[Kharel Sync] push error:', err);
+            console.error('[Kharel Sync] push error (' + group.id + '):', err);
             showSyncErrorToast('⚠️ Cloud sync fail ho gaya (' + (err && err.message ? err.message : 'unknown error') + '). Yeh change abhi sirf isi device par hai.');
           });
         }, 800); // small debounce so rapid edits become one write
@@ -9337,19 +9444,21 @@
       // mirrors to Firestore - nothing in the app code had to change.
       localStorage.setItem = function (key, value) {
         nativeSetItem(key, value);
-        if (!suppressWrite && SYNC_KEYS.includes(key)) pushToFirestore();
+        if (suppressWrite) return;
+        const group = groupForKey(key);
+        if (group) pushGroupToFirestore(group);
       };
 
-      function applyRemoteData(remote) {
+      function applyRemoteData(group, remote) {
         suppressWrite = true;
-        SYNC_KEYS.forEach(k => {
+        group.keys.forEach(k => {
           if (k === 'kharel_products') return; // handled specially below, to protect local-only videos
           if (remote.data && remote.data[k] !== undefined && remote.data[k] !== null) {
             nativeSetItem(k, remote.data[k]);
           }
         });
         // Merge incoming product data with any video this device already has locally,
-        // since videos are never sent to the cloud (see pushToFirestore) and would
+        // since videos are never sent to the cloud (see pushGroupToFirestore) and would
         // otherwise be wiped out the next time this device pulls an update.
         if (remote.data && remote.data.kharel_products !== undefined && remote.data.kharel_products !== null) {
           try {
@@ -9364,9 +9473,9 @@
             nativeSetItem('kharel_products', remote.data.kharel_products);
           }
         }
-        localVersion = remote.version;
-        lastWrittenVersion = remote.version;
-        nativeSetItem('kharel_sync_version', String(remote.version));
+        group.localVersion = remote.version;
+        group.lastWrittenVersion = remote.version;
+        nativeSetItem(group.versionLSKey, String(remote.version));
         suppressWrite = false;
       }
 
@@ -9381,6 +9490,7 @@
         document.body.appendChild(el);
         setTimeout(() => { if (el.parentNode) el.remove(); }, 12000);
       }
+      window.showSyncErrorToast = showSyncErrorToast; // used by Admin Settings size-guard alerts too
 
       // Re-reads every synced piece of data from localStorage into the app's live
       // variables (they're only loaded once at page start, so a background sync
@@ -9432,7 +9542,7 @@
         el.style.cssText = 'position:fixed;bottom:16px;right:16px;background:#1a472a;color:#fff;padding:12px 18px;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.2);z-index:99999;font-size:14px;cursor:pointer;';
         el.textContent = '🔄 Syncing new data...';
         document.body.appendChild(el);
-        
+
         // Give Firebase a moment, then refresh every visible piece of the app with
         // the newly-synced data (see refreshAppStateAfterSync above).
         setTimeout(() => {
@@ -9457,54 +9567,69 @@
       // random scripts that never load this page from touching the database.
       auth.signInAnonymously().then(() => {
         authReady = true;
-        if (pendingPush) { pendingPush = false; pushToFirestore(); }
 
-        // Initial load: pull the latest cloud copy once. If this device's
-        // local copy is behind, apply it and reload so the app renders fresh data.
-        docRef.get().then(snap => {
-          if (!snap.exists) {
-            pushToFirestore(); // first device ever — seed the cloud with local data
-            return;
-          }
-          const remote = snap.data();
-          if (remote.version > localVersion) {
-            applyRemoteData(remote);
-            location.reload();
-          }
-        }).catch(err => console.error('[Kharel Sync] initial fetch error:', err));
+        let groupsStillLoading = syncGroups.length;
+        let anyGroupNeedsReload = false;
 
-        // Live updates: if another device/staff member changes data while this
-        // page stays open, show a small tappable toast instead of forcing a reload.
-        docRef.onSnapshot(snap => {
-          if (!snap.exists) return;
-          const remote = snap.data();
+        syncGroups.forEach(group => {
+          if (group.pendingPush) { group.pendingPush = false; pushGroupToFirestore(group); }
 
-          // Ignore snapshots that are older than or equal to what we last wrote
-          // — this avoids re-applying our own just-pushed data.
-          if (remote.version <= lastWrittenVersion) return;
-
-          // EOD conflict detection: warn if local and remote differ for eod_closures.
-          try {
-            const localEodRaw  = localStorage.getItem('kharel_eod_closures');
-            const remoteEodRaw = remote.data && remote.data.kharel_eod_closures;
-            if (localEodRaw && remoteEodRaw && localEodRaw !== remoteEodRaw) {
-              const localEod  = JSON.parse(localEodRaw);
-              const remoteEod = JSON.parse(remoteEodRaw);
-              // Find dates where closure status conflicts.
-              const conflicts = remoteEod.filter(se => {
-                const le = localEod.find(l => l.date === se.date);
-                return le && le.cancelled !== se.cancelled;
-              });
-              if (conflicts.length > 0) {
-                console.warn('[Kharel Sync] EOD conflict detected for dates:',
-                  conflicts.map(c => c.date).join(', '), '— server version wins.');
+          // Initial load: pull the latest cloud copy of this doc once. If this
+          // device's local copy is behind, apply it; once ALL docs are checked,
+          // reload once (not once per doc) so the app renders fully fresh data.
+          group.ref.get().then(snap => {
+            if (!snap.exists) {
+              pushGroupToFirestore(group); // first device ever — seed the cloud with local data
+            } else {
+              const remote = snap.data();
+              if (remote.version > group.localVersion) {
+                applyRemoteData(group, remote);
+                anyGroupNeedsReload = true;
               }
             }
-          } catch (e) { /* ignore JSON parse errors during conflict check */ }
+          }).catch(err => {
+            console.error('[Kharel Sync] initial fetch error (' + group.id + '):', err);
+          }).finally(() => {
+            groupsStillLoading -= 1;
+            if (groupsStillLoading === 0 && anyGroupNeedsReload) location.reload();
+          });
 
-          applyRemoteData(remote);
-          showSyncToast();
-        }, err => console.error('[Kharel Sync] listener error:', err));
+          // Live updates: if another device/staff member changes data while this
+          // page stays open, show a small tappable toast instead of forcing a reload.
+          group.ref.onSnapshot(snap => {
+            if (!snap.exists) return;
+            const remote = snap.data();
+
+            // Ignore snapshots that are older than or equal to what we last wrote
+            // — this avoids re-applying our own just-pushed data.
+            if (remote.version <= group.lastWrittenVersion) return;
+
+            // EOD conflict detection: warn if local and remote differ for eod_closures
+            // (only relevant to the "main" group, where eod_closures lives).
+            if (group.id === 'main') {
+              try {
+                const localEodRaw  = localStorage.getItem('kharel_eod_closures');
+                const remoteEodRaw = remote.data && remote.data.kharel_eod_closures;
+                if (localEodRaw && remoteEodRaw && localEodRaw !== remoteEodRaw) {
+                  const localEod  = JSON.parse(localEodRaw);
+                  const remoteEod = JSON.parse(remoteEodRaw);
+                  // Find dates where closure status conflicts.
+                  const conflicts = remoteEod.filter(se => {
+                    const le = localEod.find(l => l.date === se.date);
+                    return le && le.cancelled !== se.cancelled;
+                  });
+                  if (conflicts.length > 0) {
+                    console.warn('[Kharel Sync] EOD conflict detected for dates:',
+                      conflicts.map(c => c.date).join(', '), '— server version wins.');
+                  }
+                }
+              } catch (e) { /* ignore JSON parse errors during conflict check */ }
+            }
+
+            applyRemoteData(group, remote);
+            showSyncToast();
+          }, err => console.error('[Kharel Sync] listener error (' + group.id + '):', err));
+        });
       }).catch(err => console.error('[Kharel Sync] anonymous sign-in error:', err));
     })();
     </script>
