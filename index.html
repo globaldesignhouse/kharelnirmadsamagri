@@ -1690,6 +1690,107 @@
           });
         }
 
+        // Same idea as compressImageFile above, but works on an image that's ALREADY
+        // stored as a base64 dataURL (rather than a fresh file upload). Used to shrink
+        // old images that were saved before compression was added to the app.
+        function compressDataUrlImage(dataUrl, maxDim, quality, format) {
+          maxDim = maxDim || 900;
+          quality = quality || 0.72;
+          format = format || 'image/jpeg';
+          return new Promise((resolve) => {
+            if (!dataUrl || typeof dataUrl !== 'string' || !dataUrl.startsWith('data:image')) {
+              resolve(dataUrl); // not an image data-url (e.g. a PDF certificate) - leave untouched
+              return;
+            }
+            const img = new Image();
+            img.onerror = () => resolve(dataUrl);
+            img.onload = () => {
+              let { width, height } = img;
+              if (width > maxDim || height > maxDim) {
+                if (width >= height) { height = Math.round(height * (maxDim / width)); width = maxDim; }
+                else { width = Math.round(width * (maxDim / height)); height = maxDim; }
+              }
+              const canvas = document.createElement('canvas');
+              canvas.width = width;
+              canvas.height = height;
+              const ctx = canvas.getContext('2d');
+              if (format === 'image/jpeg') {
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, width, height);
+              }
+              ctx.drawImage(img, 0, 0, width, height);
+              try {
+                const out = canvas.toDataURL(format, quality);
+                // Only use the recompressed version if it's actually smaller.
+                resolve(out.length < dataUrl.length ? out : dataUrl);
+              } catch (err) {
+                resolve(dataUrl);
+              }
+            };
+            img.src = dataUrl;
+          });
+        }
+
+        // Goes through every image already saved in the app (product photos, gallery
+        // images, wallet/bank QR codes, JPEG certificates) and re-compresses any that
+        // are still large - fixes the common case where images were uploaded BEFORE
+        // compression was added to the app, and are now the reason cloud sync is
+        // blocked for being oversized. PDFs and already-small images are left alone.
+        async function adminOptimizeAllImages() {
+          if (!isAdmin()) return;
+          if (!confirm('This will re-compress large images already saved in the app (products, QR codes, certificates) to shrink storage. This can take a moment for many images. Continue?')) return;
+
+          const beforeBytes = SYNC_KEYS.reduce((sum, k) => sum + (localStorage.getItem(k) || '').length, 0);
+          const btn = document.getElementById('optimizeImagesBtn');
+          if (btn) { btn.disabled = true; btn.textContent = '⏳ Optimizing...'; }
+
+          const SIZE_THRESHOLD = 120000; // ~120KB - only touch images bigger than this
+
+          // Products: main image + gallery images
+          for (const p of products) {
+            if (p.image && p.image.length > SIZE_THRESHOLD) {
+              p.image = await compressDataUrlImage(p.image, 900, 0.7, 'image/jpeg');
+            }
+            if (Array.isArray(p.images)) {
+              for (let i = 0; i < p.images.length; i++) {
+                if (p.images[i] && p.images[i].length > SIZE_THRESHOLD) {
+                  p.images[i] = await compressDataUrlImage(p.images[i], 900, 0.7, 'image/jpeg');
+                }
+              }
+            }
+          }
+          saveProducts();
+
+          // Wallet QR codes
+          for (const w of walletQRs) {
+            if (w.image && w.image.length > SIZE_THRESHOLD) {
+              w.image = await compressDataUrlImage(w.image, 700, 0.85, 'image/png');
+            }
+          }
+          saveWalletQRs();
+
+          // Bank QR
+          if (bankQR && bankQR.image && bankQR.image.length > SIZE_THRESHOLD) {
+            bankQR.image = await compressDataUrlImage(bankQR.image, 700, 0.85, 'image/png');
+            saveBankQRData();
+          }
+
+          // Certificates (JPEG only - PDFs are skipped automatically by compressDataUrlImage)
+          for (const c of certificates) {
+            if (c.fileData && c.fileData.length > SIZE_THRESHOLD) {
+              c.fileData = await compressDataUrlImage(c.fileData, 1200, 0.7, 'image/jpeg');
+            }
+          }
+          saveCertificates();
+
+          const afterBytes = SYNC_KEYS.reduce((sum, k) => sum + (localStorage.getItem(k) || '').length, 0);
+          if (btn) { btn.disabled = false; btn.textContent = '🗜️ Optimize All Images'; }
+          renderProducts();
+          renderWalletQRAdminList();
+          renderBankQRAdminPreview();
+          alert(`✓ Done!\n\nBefore: ${Math.round(beforeBytes / 1024)}KB\nAfter: ${Math.round(afterBytes / 1024)}KB\n\nTry syncing/adding your QR code again.`);
+        }
+
         function paperWidthSelectHtml(idSuffix) {
           return `
             <select class="filter-select" style="max-width:190px;" id="paperWidthSelect-${idSuffix}" onchange="setPrintPaperWidth(this.value)">
@@ -5952,6 +6053,12 @@
                     </div>
                   `;
                 }).join('')}
+              </div>
+
+              <h3 style="margin: 20px 0 12px; font-size: 14px; border-bottom: 2px solid #1565c0; padding-bottom: 8px; color:#1565c0;">🗜️ Cloud Sync Storage</h3>
+              <div style="max-width: 450px; margin-bottom: 24px; background:#eef5fb; border:1px solid #bcdcf2; border-radius:8px; padding:16px;">
+                <p style="font-size:13px; color:#444; margin-bottom:10px;">If you see a "Cloud sync ruk gaya - data bahut bada hai" warning, it usually means some product/QR/certificate images were uploaded before image compression was added and are still large. Click below to shrink them - this is safe and doesn't remove anything, only re-compresses images that are already too big.</p>
+                <button class="checkout-btn" id="optimizeImagesBtn" style="width:auto; padding:10px 16px;" onclick="adminOptimizeAllImages()">🗜️ Optimize All Images</button>
               </div>
 
               <h3 style="margin: 20px 0 12px; font-size: 14px; border-bottom: 2px solid #c0392b; padding-bottom: 8px; color:#c0392b;">🗑️ Clear Sales & Orders Data</h3>
