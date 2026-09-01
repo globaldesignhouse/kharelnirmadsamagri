@@ -775,6 +775,28 @@
         }
         .home-img-slider .his-dot.active { background:#fff; width:18px; border-radius:4px; }
         @media (max-width: 480px) { .home-img-slider { aspect-ratio:4/3; } }
+
+        /* ===================== Manual Image Cropper (used for banner/slider uploads) ===================== */
+        .img-cropper-overlay {
+          position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 100000;
+          display: flex; align-items: center; justify-content: center; padding: 16px;
+        }
+        .img-cropper-box {
+          background: #fff; border-radius: 10px; padding: 16px; max-width: 400px; width: 100%;
+          box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+        }
+        .img-cropper-title { font-weight: 700; font-size: 15px; margin-bottom: 10px; text-align:center; color:#1a472a; }
+        .img-cropper-viewport {
+          position: relative; overflow: hidden; margin: 0 auto; background:#000; border-radius:6px;
+          touch-action: none; cursor: grab;
+        }
+        .img-cropper-viewport:active { cursor: grabbing; }
+        .img-cropper-viewport img {
+          position: absolute; top:0; left:0; max-width:none; user-select:none; -webkit-user-drag:none; pointer-events:none;
+        }
+        .img-cropper-controls { display:flex; align-items:center; gap:8px; margin-top:12px; }
+        .img-cropper-btns { display:flex; gap:10px; margin-top: 4px; }
+        .img-cropper-btns .checkout-btn { flex:1; }
         .cat-chip-row { display:flex; gap:8px; overflow-x:auto; padding-bottom:8px; margin-bottom:10px; }
         .cat-chip {
           flex:0 0 auto; padding:7px 16px; border-radius:20px; border:1px solid #ddd; background:#fff;
@@ -1884,6 +1906,147 @@
             };
             img.src = dataUrl;
           });
+        }
+
+        // ---------- Manual image cropper (drag to reposition, slider to zoom) ----------
+        // Opens a modal so the admin can choose exactly which part of a photo shows
+        // inside a fixed-shape box (e.g. the 16:7 home banner), instead of the photo
+        // being auto-cropped from the center. onConfirm(dataUrl) is called with the
+        // final cropped+compressed JPEG once the admin taps "Use This Photo"; nothing
+        // happens if they cancel.
+        function openImageCropper(file, aspectW, aspectH, outputWidth, onConfirm, onCancel) {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => buildImageCropperModal(img, aspectW, aspectH, outputWidth, onConfirm, onCancel);
+            img.onerror = () => { alert('⚠️ Could not read that image.'); if (onCancel) onCancel(); };
+            img.src = e.target.result;
+          };
+          reader.onerror = () => { alert('⚠️ Could not read that file.'); if (onCancel) onCancel(); };
+          reader.readAsDataURL(file);
+        }
+
+        function buildImageCropperModal(img, aspectW, aspectH, outputWidth, onConfirm, onCancel) {
+          const already = document.getElementById('imgCropperOverlay');
+          if (already) already.remove();
+
+          const viewportW = Math.min(360, window.innerWidth - 40);
+          const viewportH = Math.round(viewportW * aspectH / aspectW);
+
+          const overlay = document.createElement('div');
+          overlay.id = 'imgCropperOverlay';
+          overlay.className = 'img-cropper-overlay';
+          overlay.innerHTML = `
+            <div class="img-cropper-box">
+              <div class="img-cropper-title">🖼️ Adjust Photo</div>
+              <div class="img-cropper-viewport" id="cropViewport" style="width:${viewportW}px; height:${viewportH}px;">
+                <img id="cropImg" alt="crop preview">
+              </div>
+              <div class="img-cropper-controls">
+                <span style="font-size:15px;">🔍−</span>
+                <input type="range" id="cropZoom" min="100" max="300" value="100" style="flex:1;">
+                <span style="font-size:15px;">🔍+</span>
+              </div>
+              <p style="font-size:11px; color:#888; text-align:center; margin:6px 0 12px;">Drag the photo to reposition &middot; use the slider to zoom</p>
+              <div class="img-cropper-btns">
+                <button class="checkout-btn" id="cropCancelBtn" style="background:#888;">✕ Cancel</button>
+                <button class="checkout-btn" id="cropConfirmBtn">✓ Use This Photo</button>
+              </div>
+            </div>`;
+          document.body.appendChild(overlay);
+
+          const viewport = document.getElementById('cropViewport');
+          const cropImgEl = document.getElementById('cropImg');
+          const zoomSlider = document.getElementById('cropZoom');
+          cropImgEl.src = img.src;
+
+          const naturalW = img.naturalWidth;
+          const naturalH = img.naturalHeight;
+          const baseScale = Math.max(viewportW / naturalW, viewportH / naturalH);
+
+          let scale = baseScale;
+          let offsetX = (viewportW - naturalW * scale) / 2;
+          let offsetY = (viewportH - naturalH * scale) / 2;
+
+          function applyTransform() {
+            const dispW = naturalW * scale;
+            const dispH = naturalH * scale;
+            cropImgEl.style.width = dispW + 'px';
+            cropImgEl.style.height = dispH + 'px';
+            const minX = Math.min(0, viewportW - dispW);
+            const minY = Math.min(0, viewportH - dispH);
+            offsetX = Math.max(minX, Math.min(0, offsetX));
+            offsetY = Math.max(minY, Math.min(0, offsetY));
+            cropImgEl.style.transform = `translate(${offsetX}px, ${offsetY}px)`;
+          }
+          applyTransform();
+
+          let dragging = false, startX = 0, startY = 0, startOffX = 0, startOffY = 0;
+          function pointerDown(e) {
+            dragging = true;
+            const pt = e.touches ? e.touches[0] : e;
+            startX = pt.clientX; startY = pt.clientY;
+            startOffX = offsetX; startOffY = offsetY;
+            e.preventDefault();
+          }
+          function pointerMove(e) {
+            if (!dragging) return;
+            const pt = e.touches ? e.touches[0] : e;
+            offsetX = startOffX + (pt.clientX - startX);
+            offsetY = startOffY + (pt.clientY - startY);
+            applyTransform();
+            e.preventDefault();
+          }
+          function pointerUp() { dragging = false; }
+
+          viewport.addEventListener('mousedown', pointerDown);
+          viewport.addEventListener('touchstart', pointerDown, { passive: false });
+          window.addEventListener('mousemove', pointerMove);
+          window.addEventListener('touchmove', pointerMove, { passive: false });
+          window.addEventListener('mouseup', pointerUp);
+          window.addEventListener('touchend', pointerUp);
+
+          zoomSlider.addEventListener('input', () => {
+            const oldScale = scale;
+            scale = baseScale * (parseFloat(zoomSlider.value) / 100);
+            // keep the viewport's center point fixed on-screen while zooming
+            const cx = viewportW / 2, cy = viewportH / 2;
+            const imgCx = (cx - offsetX) / oldScale;
+            const imgCy = (cy - offsetY) / oldScale;
+            offsetX = cx - imgCx * scale;
+            offsetY = cy - imgCy * scale;
+            applyTransform();
+          });
+
+          function cleanup() {
+            window.removeEventListener('mousemove', pointerMove);
+            window.removeEventListener('touchmove', pointerMove);
+            window.removeEventListener('mouseup', pointerUp);
+            window.removeEventListener('touchend', pointerUp);
+            overlay.remove();
+          }
+
+          document.getElementById('cropCancelBtn').onclick = cleanup;
+          document.getElementById('cropConfirmBtn').onclick = () => {
+            const outputHeight = Math.round(outputWidth * aspectH / aspectW);
+            const canvas = document.createElement('canvas');
+            canvas.width = outputWidth;
+            canvas.height = outputHeight;
+            const ctx = canvas.getContext('2d');
+            const sx = (0 - offsetX) / scale;
+            const sy = (0 - offsetY) / scale;
+            const sw = viewportW / scale;
+            const sh = viewportH / scale;
+            let dataUrl;
+            try {
+              ctx.drawImage(cropImgEl, sx, sy, sw, sh, 0, 0, outputWidth, outputHeight);
+              dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+            } catch (err) {
+              dataUrl = img.src; // fallback: use the uncropped original
+            }
+            cleanup();
+            onConfirm(dataUrl);
+          };
         }
 
         // Goes through every image already saved in the app (product photos, gallery
@@ -6610,7 +6773,9 @@
           if (!file) { alert('Please choose an image.'); return; }
           const caption = captionEl.value.trim();
           const link = linkEl.value.trim();
-          compressImageFile(file, 1200, 0.82, 'image/jpeg').then((dataUrl) => {
+          // Banner box is 16:7 (4:3 on small phone screens) - let admin manually choose
+          // which part of the photo shows, instead of auto-cropping from the center.
+          openImageCropper(file, 16, 7, 1200, (dataUrl) => {
             homeSliderImages.push({ id: nextSliderImageId++, image: dataUrl, caption, link });
             saveHomeSliderImages();
             renderSliderImagesAdminList();
