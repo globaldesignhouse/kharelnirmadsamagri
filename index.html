@@ -748,7 +748,8 @@
         @keyframes hd-scroll { 0%{ transform:translateX(100%);} 100%{ transform:translateX(-100%);} }
         .home-img-slider {
           position:relative; border-radius:10px; overflow:hidden; margin:14px 0 16px;
-          background:#eee; width:100%; aspect-ratio:16/7; min-height:120px;
+          background:#eee; width:100%; aspect-ratio:9/16; min-height:120px;
+          max-width:420px; margin-left:auto; margin-right:auto;
         }
         .home-img-slider .his-slide {
           position:absolute; inset:0; opacity:0; transition:opacity .6s ease; cursor:pointer;
@@ -774,35 +775,28 @@
           width:7px; height:7px; border-radius:50%; background:rgba(255,255,255,0.55); cursor:pointer; border:none; padding:0;
         }
         .home-img-slider .his-dot.active { background:#fff; width:18px; border-radius:4px; }
-        @media (max-width: 480px) { .home-img-slider { aspect-ratio:4/3; } }
+        .home-img-slider .his-banner-overlay {
+          position:absolute; top:0; left:0; right:0; z-index:2; padding:22px 16px 46px;
+          background:linear-gradient(180deg, rgba(0,0,0,.6), rgba(0,0,0,0) 75%);
+          color:#fff; text-align:center; pointer-events:none;
+        }
+        .home-img-slider .his-banner-overlay .hf-title { font-size:19px; font-weight:800; margin-bottom:6px; text-shadow:0 1px 4px rgba(0,0,0,.55); }
+        .home-img-slider .his-banner-overlay .hf-sub { font-size:12px; opacity:.95; text-shadow:0 1px 4px rgba(0,0,0,.55); }
+        @media (max-width: 480px) { .home-img-slider { aspect-ratio:9/16; max-width:100%; } }
 
-        /* ===================== Manual Image Cropper (used for banner/slider uploads) ===================== */
-        .img-cropper-overlay {
-          position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 100000;
-          display: flex; align-items: center; justify-content: center; padding: 16px;
-        }
-        .img-cropper-box {
-          background: #fff; border-radius: 10px; padding: 16px; max-width: 400px; width: 100%;
-          box-shadow: 0 8px 30px rgba(0,0,0,0.3);
-        }
-        .img-cropper-title { font-weight: 700; font-size: 15px; margin-bottom: 10px; text-align:center; color:#1a472a; }
-        .img-cropper-viewport {
-          position: relative; overflow: hidden; margin: 0 auto; background:#000; border-radius:6px;
-          touch-action: none; cursor: grab;
-        }
-        .img-cropper-viewport:active { cursor: grabbing; }
-        .img-cropper-viewport img {
-          position: absolute; top:0; left:0; max-width:none; user-select:none; -webkit-user-drag:none; pointer-events:none;
-        }
-        .img-cropper-controls { display:flex; align-items:center; gap:8px; margin-top:12px; }
-        .img-cropper-btns { display:flex; gap:10px; margin-top: 4px; }
-        .img-cropper-btns .checkout-btn { flex:1; }
-        .img-cropper-aspects { display:flex; gap:6px; flex-wrap:wrap; justify-content:center; margin-bottom:10px; }
-        .img-cropper-aspect-btn {
-          padding: 5px 12px; border-radius: 20px; border: 1px solid #ccc; background:#f4f4f4;
-          font-size: 12px; cursor: pointer; color:#444; transition: all 0.2s;
-        }
-        .img-cropper-aspect-btn.active { background:#2d6d48; color:#fff; border-color:#2d6d48; }
+        /* ===================== Custom corner-drag image cropper ===================== */
+        .img-crop-overlay { position:fixed; inset:0; background:rgba(0,0,0,.88); z-index:6000; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:16px; }
+        .img-crop-stage { position:relative; display:inline-block; max-width:100%; max-height:65vh; touch-action:none; }
+        .img-crop-stage img { display:block; max-width:100%; max-height:65vh; user-select:none; -webkit-user-drag:none; pointer-events:none; }
+        .img-crop-box { position:absolute; border:2px solid #fff; box-shadow:0 0 0 9999px rgba(0,0,0,.55); cursor:move; touch-action:none; }
+        .img-crop-handle { position:absolute; width:22px; height:22px; background:#fff; border:2px solid #1a472a; border-radius:50%; z-index:2; touch-action:none; }
+        .img-crop-handle.tl { top:-11px; left:-11px; cursor:nwse-resize; }
+        .img-crop-handle.tr { top:-11px; right:-11px; cursor:nesw-resize; }
+        .img-crop-handle.bl { bottom:-11px; left:-11px; cursor:nesw-resize; }
+        .img-crop-handle.br { bottom:-11px; right:-11px; cursor:nwse-resize; }
+        .img-crop-actions { display:flex; gap:10px; margin-top:16px; flex-wrap:wrap; justify-content:center; }
+        .img-crop-actions button { padding:10px 18px; border:none; border-radius:20px; font-weight:700; font-size:13px; cursor:pointer; }
+        .img-crop-hint { color:#fff; font-size:12px; opacity:.8; margin-top:12px; text-align:center; max-width:320px; }
         .cat-chip-row { display:flex; gap:8px; overflow-x:auto; padding-bottom:8px; margin-bottom:10px; }
         .cat-chip {
           flex:0 0 auto; padding:7px 16px; border-radius:20px; border:1px solid #ddd; background:#fff;
@@ -1206,7 +1200,8 @@
           tagline: 'QUALITY MATERIALS · FAIR PRICES',
           headlineMain: 'Built to ',
           headlineHighlight: 'Last',
-          sub: 'Doors, Windows, Cement & everything for your construction'
+          sub: 'Doors, Windows, Cement & everything for your construction',
+          showTextOverSlider: false
         };
         function loadHeroBannerSettings() {
           try {
@@ -1914,222 +1909,159 @@
           });
         }
 
-        // ---------- Manual image cropper (drag to reposition, slider to zoom, pick aspect ratio) ----------
-        // Opens a modal so the admin can choose exactly which part of a photo shows
-        // inside a shaped box (e.g. the 16:7 home banner, or a 4:3 product photo),
-        // instead of the photo being auto-cropped from the center. The admin can also
-        // switch to a different aspect ratio (Square, 4:3, 16:9, Tall, or type their
-        // own Custom W:H ratio) right inside the modal.
-        // onConfirm(dataUrl) is called with the final cropped+compressed JPEG once the
-        // admin taps "Use This Photo"; nothing happens if they cancel.
-        function openImageCropper(file, aspectW, aspectH, outputWidth, onConfirm, onCancel) {
+        // ---------- Custom corner-drag image cropper (mobile-style crop tool) ----------
+        // Shows the chosen image full-screen with a draggable rectangle (4 corner handles
+        // to resize from any corner, drag the middle to move) so Admin can pick exactly
+        // which part of the photo to keep before it's used as a banner/slide image.
+        let _cropState = null;
+
+        function openImageCropper(file, aspectHint, onDone, onCancel) {
           const reader = new FileReader();
           reader.onload = (e) => {
-            const img = new Image();
-            img.onload = () => buildImageCropperModal(img, aspectW, aspectH, outputWidth, onConfirm, onCancel);
-            img.onerror = () => { alert('⚠️ Could not read that image.'); if (onCancel) onCancel(); };
-            img.src = e.target.result;
+            const overlay = document.createElement('div');
+            overlay.className = 'img-crop-overlay';
+            overlay.id = 'imgCropOverlay';
+            overlay.innerHTML = `
+              <div class="img-crop-stage" id="imgCropStage">
+                <img id="imgCropImg" src="${e.target.result}">
+                <div class="img-crop-box" id="imgCropBox">
+                  <div class="img-crop-handle tl" data-h="tl"></div>
+                  <div class="img-crop-handle tr" data-h="tr"></div>
+                  <div class="img-crop-handle bl" data-h="bl"></div>
+                  <div class="img-crop-handle br" data-h="br"></div>
+                </div>
+              </div>
+              <div class="img-crop-hint">Drag the white corner dots to crop. Drag the middle of the box to move it.</div>
+              <div class="img-crop-actions">
+                <button style="background:#1a472a; color:#fff;" onclick="confirmImageCrop()">✓ Crop &amp; Use</button>
+                <button style="background:#888; color:#fff;" onclick="skipImageCrop()">Use Full Image</button>
+                <button style="background:#c0392b; color:#fff;" onclick="cancelImageCrop()">✕ Cancel</button>
+              </div>
+            `;
+            document.body.appendChild(overlay);
+            _cropState = { onDone: onDone, onCancel: onCancel };
+            const img = document.getElementById('imgCropImg');
+            const start = () => { initCropBox(aspectHint); wireCropHandles(); };
+            if (img.complete && img.naturalWidth) start(); else img.onload = start;
           };
-          reader.onerror = () => { alert('⚠️ Could not read that file.'); if (onCancel) onCancel(); };
           reader.readAsDataURL(file);
         }
 
-        function buildImageCropperModal(img, defaultAspectW, defaultAspectH, outputWidth, onConfirm, onCancel) {
-          const already = document.getElementById('imgCropperOverlay');
-          if (already) already.remove();
-
-          const naturalW = img.naturalWidth;
-          const naturalH = img.naturalHeight;
-
-          // Aspect-ratio presets the admin can pick from. "Original" is whatever ratio
-          // this upload spot normally uses (banner = 16:7, product = 4:3, etc); "Custom"
-          // lets the admin type their own W:H ratio instead of picking a preset shape.
-          const presets = [{ label: 'Original', w: defaultAspectW, h: defaultAspectH }];
-          [['Square', 1, 1], ['4:3', 4, 3], ['16:9', 16, 9], ['Tall', 9, 16]].forEach(([label, w, h]) => {
-            if (!(w / h === defaultAspectW / defaultAspectH)) presets.push({ label, w, h });
-          });
-          presets.push({ label: 'Custom', w: null, h: null });
-
-          function gcd(a, b) { return b ? gcd(b, a % b) : a; }
-          const g = gcd(naturalW, naturalH) || 1;
-          const naturalRatioW = Math.round(naturalW / g);
-          const naturalRatioH = Math.round(naturalH / g);
-
-          const overlay = document.createElement('div');
-          overlay.id = 'imgCropperOverlay';
-          overlay.className = 'img-cropper-overlay';
-          overlay.innerHTML = `
-            <div class="img-cropper-box">
-              <div class="img-cropper-title">🖼️ Adjust Photo</div>
-              <div class="img-cropper-aspects" id="cropAspectRow">
-                ${presets.map((p, i) => `<button type="button" class="img-cropper-aspect-btn${i === 0 ? ' active' : ''}" data-idx="${i}">${p.label}</button>`).join('')}
-              </div>
-              <div id="cropCustomRow" style="display:none; align-items:center; justify-content:center; gap:6px; margin-bottom:10px; font-size:12px;">
-                <input type="number" id="cropCustomW" min="1" step="any" value="${naturalRatioW}" style="width:56px; padding:4px; border:1px solid #ccc; border-radius:4px; text-align:center;">
-                <span>:</span>
-                <input type="number" id="cropCustomH" min="1" step="any" value="${naturalRatioH}" style="width:56px; padding:4px; border:1px solid #ccc; border-radius:4px; text-align:center;">
-                <button type="button" id="cropCustomApplyBtn" class="img-cropper-aspect-btn" style="background:#1565c0; color:#fff; border-color:#1565c0;">Apply</button>
-              </div>
-              <div class="img-cropper-viewport" id="cropViewport">
-                <img id="cropImg" alt="crop preview">
-              </div>
-              <div class="img-cropper-controls">
-                <span style="font-size:15px;">🔍−</span>
-                <input type="range" id="cropZoom" min="100" max="300" value="100" style="flex:1;">
-                <span style="font-size:15px;">🔍+</span>
-              </div>
-              <p style="font-size:11px; color:#888; text-align:center; margin:6px 0 12px;">Choose a shape above &middot; drag the photo to reposition &middot; use the slider to zoom</p>
-              <div class="img-cropper-btns">
-                <button class="checkout-btn" id="cropCancelBtn" style="background:#888;">✕ Cancel</button>
-                <button class="checkout-btn" id="cropConfirmBtn">✓ Use This Photo</button>
-              </div>
-            </div>`;
-          document.body.appendChild(overlay);
-
-          const viewport = document.getElementById('cropViewport');
-          const cropImgEl = document.getElementById('cropImg');
-          const zoomSlider = document.getElementById('cropZoom');
-          const customRow = document.getElementById('cropCustomRow');
-          const customWInput = document.getElementById('cropCustomW');
-          const customHInput = document.getElementById('cropCustomH');
-          cropImgEl.src = img.src;
-
-          let aspectW = defaultAspectW, aspectH = defaultAspectH;
-          let viewportW, viewportH, baseScale, scale, offsetX, offsetY;
-
-          function applyTransform() {
-            const dispW = naturalW * scale;
-            const dispH = naturalH * scale;
-            cropImgEl.style.width = dispW + 'px';
-            cropImgEl.style.height = dispH + 'px';
-            const minX = Math.min(0, viewportW - dispW);
-            const minY = Math.min(0, viewportH - dispH);
-            offsetX = Math.max(minX, Math.min(0, offsetX));
-            offsetY = Math.max(minY, Math.min(0, offsetY));
-            cropImgEl.style.transform = `translate(${offsetX}px, ${offsetY}px)`;
+        function initCropBox(aspectHint) {
+          const img = document.getElementById('imgCropImg');
+          const box = document.getElementById('imgCropBox');
+          const iw = img.clientWidth, ih = img.clientHeight;
+          let bw, bh;
+          if (aspectHint) {
+            if (iw / ih > aspectHint) { bh = ih * 0.92; bw = bh * aspectHint; if (bw > iw) { bw = iw * 0.92; bh = bw / aspectHint; } }
+            else { bw = iw * 0.92; bh = bw / aspectHint; if (bh > ih) { bh = ih * 0.92; bw = bh * aspectHint; } }
+          } else {
+            bw = iw * 0.85; bh = ih * 0.85;
           }
+          box.style.left = ((iw - bw) / 2) + 'px';
+          box.style.top = ((ih - bh) / 2) + 'px';
+          box.style.width = bw + 'px';
+          box.style.height = bh + 'px';
+        }
 
-          // Rebuilds the crop box for a newly-picked aspect ratio (a preset, or a
-          // custom W:H the admin typed in) and re-centers/re-fits the photo inside it.
-          function setAspect(w, h) {
-            aspectW = w > 0 ? w : naturalW;
-            aspectH = h > 0 ? h : naturalH;
-
-            const maxW = Math.min(360, window.innerWidth - 40);
-            const maxH = 420;
-            viewportW = maxW;
-            viewportH = Math.round(viewportW * aspectH / aspectW);
-            if (viewportH > maxH) {
-              viewportH = maxH;
-              viewportW = Math.round(viewportH * aspectW / aspectH);
-            }
-            viewport.style.width = viewportW + 'px';
-            viewport.style.height = viewportH + 'px';
-
-            baseScale = Math.max(viewportW / naturalW, viewportH / naturalH);
-            scale = baseScale;
-            offsetX = (viewportW - naturalW * scale) / 2;
-            offsetY = (viewportH - naturalH * scale) / 2;
-            zoomSlider.value = 100;
-            applyTransform();
-          }
-          setAspect(defaultAspectW, defaultAspectH);
-
-          function applyCustomAspect() {
-            const w = parseFloat(customWInput.value);
-            const h = parseFloat(customHInput.value);
-            if (!(w > 0) || !(h > 0)) { alert('Please enter a valid ratio, e.g. 5 : 2'); return; }
-            setAspect(w, h);
-          }
-          document.getElementById('cropCustomApplyBtn').onclick = applyCustomAspect;
-          [customWInput, customHInput].forEach(inp => {
-            inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') applyCustomAspect(); });
-          });
-
-          document.getElementById('cropAspectRow').addEventListener('click', (e) => {
-            const btn = e.target.closest('.img-cropper-aspect-btn');
-            if (!btn) return;
-            document.querySelectorAll('.img-cropper-aspect-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            const p = presets[parseInt(btn.dataset.idx, 10)];
-            if (p.w == null) {
-              // "Custom" picked - reveal the W:H fields and apply whatever's in them
-              // (starts pre-filled with the photo's own simplified ratio).
-              customRow.style.display = 'flex';
-              applyCustomAspect();
-            } else {
-              customRow.style.display = 'none';
-              setAspect(p.w, p.h);
-            }
-          });
-
-          let dragging = false, startX = 0, startY = 0, startOffX = 0, startOffY = 0;
-          function pointerDown(e) {
-            dragging = true;
-            const pt = e.touches ? e.touches[0] : e;
-            startX = pt.clientX; startY = pt.clientY;
-            startOffX = offsetX; startOffY = offsetY;
-            e.preventDefault();
-          }
-          function pointerMove(e) {
-            if (!dragging) return;
-            const pt = e.touches ? e.touches[0] : e;
-            offsetX = startOffX + (pt.clientX - startX);
-            offsetY = startOffY + (pt.clientY - startY);
-            applyTransform();
-            e.preventDefault();
-          }
-          function pointerUp() { dragging = false; }
-
-          viewport.addEventListener('mousedown', pointerDown);
-          viewport.addEventListener('touchstart', pointerDown, { passive: false });
-          window.addEventListener('mousemove', pointerMove);
-          window.addEventListener('touchmove', pointerMove, { passive: false });
-          window.addEventListener('mouseup', pointerUp);
-          window.addEventListener('touchend', pointerUp);
-
-          zoomSlider.addEventListener('input', () => {
-            const oldScale = scale;
-            scale = baseScale * (parseFloat(zoomSlider.value) / 100);
-            // keep the viewport's center point fixed on-screen while zooming
-            const cx = viewportW / 2, cy = viewportH / 2;
-            const imgCx = (cx - offsetX) / oldScale;
-            const imgCy = (cy - offsetY) / oldScale;
-            offsetX = cx - imgCx * scale;
-            offsetY = cy - imgCy * scale;
-            applyTransform();
-          });
-
-          function cleanup() {
-            window.removeEventListener('mousemove', pointerMove);
-            window.removeEventListener('touchmove', pointerMove);
-            window.removeEventListener('mouseup', pointerUp);
-            window.removeEventListener('touchend', pointerUp);
-            overlay.remove();
-          }
-
-          document.getElementById('cropCancelBtn').onclick = cleanup;
-          document.getElementById('cropConfirmBtn').onclick = () => {
-            const finalOutputWidth = outputWidth;
-            const outputHeight = Math.round(finalOutputWidth * aspectH / aspectW);
-            const canvas = document.createElement('canvas');
-            canvas.width = finalOutputWidth;
-            canvas.height = outputHeight;
-            const ctx = canvas.getContext('2d');
-            const sx = (0 - offsetX) / scale;
-            const sy = (0 - offsetY) / scale;
-            const sw = viewportW / scale;
-            const sh = viewportH / scale;
-            let dataUrl;
-            try {
-              ctx.drawImage(cropImgEl, sx, sy, sw, sh, 0, 0, finalOutputWidth, outputHeight);
-              dataUrl = canvas.toDataURL('image/jpeg', 0.85);
-            } catch (err) {
-              dataUrl = img.src; // fallback: use the uncropped original
-            }
-            cleanup();
-            onConfirm(dataUrl);
+        function wireCropHandles() {
+          const img = document.getElementById('imgCropImg');
+          const box = document.getElementById('imgCropBox');
+          const stage = document.getElementById('imgCropStage');
+          const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+          const posOf = (ev) => {
+            const r = stage.getBoundingClientRect();
+            return { x: ev.clientX - r.left, y: ev.clientY - r.top };
           };
+          const minSize = 40;
+
+          box.querySelectorAll('.img-crop-handle').forEach((h) => {
+            h.addEventListener('pointerdown', (e) => {
+              e.stopPropagation(); e.preventDefault();
+              try { h.setPointerCapture(e.pointerId); } catch (err) {}
+              const type = h.dataset.h;
+              const s = { left: box.offsetLeft, top: box.offsetTop, width: box.offsetWidth, height: box.offsetHeight };
+              const p0 = posOf(e);
+              const move = (ev2) => {
+                const p = posOf(ev2);
+                const dx = p.x - p0.x, dy = p.y - p0.y;
+                let { left, top, width, height } = s;
+                if (type.includes('l')) { const nl = clamp(left + dx, 0, left + width - minSize); width += left - nl; left = nl; }
+                if (type.includes('r')) { width = clamp(width + dx, minSize, img.clientWidth - left); }
+                if (type.includes('t')) { const nt = clamp(top + dy, 0, top + height - minSize); height += top - nt; top = nt; }
+                if (type.includes('b')) { height = clamp(height + dy, minSize, img.clientHeight - top); }
+                box.style.left = left + 'px'; box.style.top = top + 'px';
+                box.style.width = width + 'px'; box.style.height = height + 'px';
+              };
+              const up = (ev2) => {
+                window.removeEventListener('pointermove', move);
+                window.removeEventListener('pointerup', up);
+              };
+              window.addEventListener('pointermove', move);
+              window.addEventListener('pointerup', up);
+            });
+          });
+
+          box.addEventListener('pointerdown', (e) => {
+            if (e.target.classList.contains('img-crop-handle')) return;
+            e.preventDefault();
+            try { box.setPointerCapture(e.pointerId); } catch (err) {}
+            const s = { left: box.offsetLeft, top: box.offsetTop };
+            const p0 = posOf(e);
+            const move = (ev2) => {
+              const p = posOf(ev2);
+              const dx = p.x - p0.x, dy = p.y - p0.y;
+              const left = clamp(s.left + dx, 0, img.clientWidth - box.offsetWidth);
+              const top = clamp(s.top + dy, 0, img.clientHeight - box.offsetHeight);
+              box.style.left = left + 'px'; box.style.top = top + 'px';
+            };
+            const up = (ev2) => {
+              window.removeEventListener('pointermove', move);
+              window.removeEventListener('pointerup', up);
+            };
+            window.addEventListener('pointermove', move);
+            window.addEventListener('pointerup', up);
+          });
+        }
+
+        function confirmImageCrop() {
+          const img = document.getElementById('imgCropImg');
+          const box = document.getElementById('imgCropBox');
+          const scaleX = img.naturalWidth / img.clientWidth;
+          const scaleY = img.naturalHeight / img.clientHeight;
+          const sx = box.offsetLeft * scaleX;
+          const sy = box.offsetTop * scaleY;
+          const sw = box.offsetWidth * scaleX;
+          const sh = box.offsetHeight * scaleY;
+          const canvas = document.createElement('canvas');
+          canvas.width = Math.max(1, Math.round(sw));
+          canvas.height = Math.max(1, Math.round(sh));
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
+          let dataUrl;
+          try { dataUrl = canvas.toDataURL('image/jpeg', 0.92); } catch (err) { dataUrl = img.src; }
+          finishCrop(dataUrl);
+        }
+
+        function skipImageCrop() {
+          const img = document.getElementById('imgCropImg');
+          finishCrop(img ? img.src : null);
+        }
+
+        function cancelImageCrop() {
+          const overlay = document.getElementById('imgCropOverlay');
+          if (overlay) overlay.remove();
+          const cb = _cropState && _cropState.onCancel;
+          _cropState = null;
+          if (cb) cb();
+        }
+
+        function finishCrop(dataUrl) {
+          const cb = _cropState && _cropState.onDone;
+          const overlay = document.getElementById('imgCropOverlay');
+          if (overlay) overlay.remove();
+          _cropState = null;
+          if (cb && dataUrl) cb(dataUrl);
         }
 
         // Goes through every image already saved in the app (product photos, gallery
@@ -2595,6 +2527,12 @@
                   ${s.caption ? `<div class="his-caption">${escapeHtml(s.caption)}</div>` : ''}
                 </div>
               `).join('')}
+              ${HERO_BANNER.showTextOverSlider ? `
+                <div class="his-banner-overlay">
+                  <div class="hf-title">🏗️ ${escapeHtml(HERO_BANNER.headlineMain || 'Kharel Nirmad Samagri Udhyog')}${escapeHtml(HERO_BANNER.headlineHighlight || '')}</div>
+                  <div class="hf-sub">${escapeHtml(HERO_BANNER.sub || 'Quality building materials at the best rates')}</div>
+                </div>
+              ` : ''}
               ${homeSliderImages.length > 1 ? `
                 <button class="his-arrow prev" onclick="homeSliderStep(-1)">‹</button>
                 <button class="his-arrow next" onclick="homeSliderStep(1)">›</button>
@@ -5839,20 +5777,18 @@
             inputEl.value = '';
             return;
           }
-          // Product cards show a 4:3 photo - let admin manually choose which part of
-          // the photo shows (and pick a different shape if they want) instead of it
-          // being auto-cropped from the center.
-          openImageCropper(file, 4, 3, 900, (dataUrl) => {
-            const product = products.find(p => p.id === id);
-            if (!product) { inputEl.value = ''; return; }
-            product.image = dataUrl;
-            saveProducts();
-            renderProducts();
-            const img = document.getElementById(`adminImgPreview-${id}`);
-            const iconSpan = document.getElementById(`adminIconPreview-${id}`);
-            if (img) { img.src = product.image; img.style.display = ''; }
-            if (iconSpan) iconSpan.style.display = 'none';
-            inputEl.value = '';
+          openImageCropper(file, 1, (croppedDataUrl) => {
+            compressDataUrlImage(croppedDataUrl, 900, 0.72, 'image/jpeg').then(dataUrl => {
+              const product = products.find(p => p.id === id);
+              if (!product) return;
+              product.image = dataUrl;
+              saveProducts();
+              renderProducts();
+              const img = document.getElementById(`adminImgPreview-${id}`);
+              const iconSpan = document.getElementById(`adminIconPreview-${id}`);
+              if (img) { img.src = product.image; img.style.display = ''; }
+              if (iconSpan) iconSpan.style.display = 'none';
+            });
           }, () => { inputEl.value = ''; });
         }
 
@@ -6416,29 +6352,30 @@
             return;
           }
 
-          let remaining = files.length;
-          files.forEach(file => {
-            const finishOne = () => {
-              remaining--;
-              if (remaining === 0) openProductMediaEditor(id);
-            };
+          let idx = 0;
+          const processNext = () => {
+            if (idx >= files.length) { openProductMediaEditor(id); return; }
+            const file = files[idx++];
             if (!['image/jpeg', 'image/png', 'image/jpg'].includes(file.type)) {
               alert(`"${file.name}" is not a JPEG/PNG image and was skipped.`);
-              finishOne();
+              processNext();
               return;
             }
             if (file.size > 2 * 1024 * 1024) {
               alert(`"${file.name}" is over 2MB and was skipped.`);
-              finishOne();
+              processNext();
               return;
             }
-            compressImageFile(file, 900, 0.72).then(dataUrl => {
-              product.images.push(dataUrl);
-              saveProducts();
-              renderProducts();
-              finishOne();
-            }).catch(finishOne);
-          });
+            openImageCropper(file, null, (croppedDataUrl) => {
+              compressDataUrlImage(croppedDataUrl, 900, 0.72, 'image/jpeg').then(dataUrl => {
+                product.images.push(dataUrl);
+                saveProducts();
+                renderProducts();
+                processNext();
+              }).catch(processNext);
+            }, () => processNext());
+          };
+          processNext();
           inputEl.value = '';
         }
 
@@ -6519,12 +6456,12 @@
             inputEl.value = '';
             return;
           }
-          // Same manual crop as existing products - let admin pick which part of the
-          // photo shows before it's set as the new product's picture.
-          openImageCropper(file, 4, 3, 900, (dataUrl) => {
-            newProductImageData = dataUrl;
-            const preview = document.getElementById('newProdImgPreview');
-            if (preview) { preview.src = newProductImageData; preview.style.display = 'inline-block'; }
+          openImageCropper(file, 1, (croppedDataUrl) => {
+            compressDataUrlImage(croppedDataUrl, 900, 0.72, 'image/jpeg').then(dataUrl => {
+              newProductImageData = dataUrl;
+              const preview = document.getElementById('newProdImgPreview');
+              if (preview) { preview.src = newProductImageData; preview.style.display = 'inline-block'; }
+            });
           }, () => { inputEl.value = ''; });
         }
 
@@ -6688,6 +6625,10 @@
                   <p style="font-size:11px; color:#999; margin-bottom:10px;">Second box is shown in a highlighted color (e.g. "Built to" + "Last").</p>
                   <label style="display:block; font-weight:600; margin-bottom:6px;">Sub-text (line below headline)</label>
                   <input type="text" class="form-input" id="heroBannerSub" value="${escapeAttr(HERO_BANNER.sub)}" style="margin-bottom:10px;">
+                  <label style="display:flex; align-items:center; gap:8px; font-size:13px; cursor:pointer; margin-bottom:12px;">
+                    <input type="checkbox" id="heroBannerOverSliderToggle" ${HERO_BANNER.showTextOverSlider ? 'checked' : ''}>
+                    <span><strong>Show this text on top of the image slider too</strong> (unchecked = once slider images are uploaded, only the plain slider shows, no text)</span>
+                  </label>
                   <button class="checkout-btn" style="width:auto; padding:8px 16px;" onclick="adminSaveHeroBanner()">💾 Save Banner Text</button>
                   <button class="checkout-btn" style="width:auto; padding:8px 16px; background:#888;" onclick="adminResetHeroBanner()">↺ Reset to Default</button>
                 </div>
@@ -6710,7 +6651,7 @@
 
               <h3 style="margin: 20px 0 12px; font-size: 14px; border-bottom: 2px solid #2d6d48; padding-bottom: 8px;">🖼️ Home Page Image Slider</h3>
               <div style="max-width: 520px; margin-bottom: 24px;">
-                <p style="font-size:12px; color:#888; margin-bottom:12px;">Upload photos (offers, new stock, storefront, etc.) to show as a rotating slider on the home page. Add a caption or a link (optional) for each.</p>
+                <p style="font-size:12px; color:#888; margin-bottom:12px;">Upload photos (offers, new stock, storefront, etc.) to show as a rotating slider on the home page. After choosing a photo you can drag its corners to crop it before it's added. Add a caption or a link (optional) for each.</p>
                 <div id="homeSliderAdminList" style="display:flex; flex-wrap:wrap; gap:12px; margin-bottom:16px;"></div>
                 <div style="background:#f9f9f9; border-radius:8px; padding:14px;">
                   <label style="display:block; font-weight:600; margin-bottom:6px;">Image</label>
@@ -6808,7 +6749,8 @@
           const headlineMain = document.getElementById('heroBannerHeadlineMain').value;
           const headlineHighlight = document.getElementById('heroBannerHeadlineHighlight').value.trim();
           const sub = document.getElementById('heroBannerSub').value.trim();
-          HERO_BANNER = { tagline, headlineMain, headlineHighlight, sub };
+          const showTextOverSlider = document.getElementById('heroBannerOverSliderToggle').checked;
+          HERO_BANNER = { tagline, headlineMain, headlineHighlight, sub, showTextOverSlider };
           saveHeroBannerSettings();
           renderHomeHero();
           alert('✓ Banner text saved.');
@@ -6862,17 +6804,17 @@
           if (!file) { alert('Please choose an image.'); return; }
           const caption = captionEl.value.trim();
           const link = linkEl.value.trim();
-          // Banner box is 16:7 (4:3 on small phone screens) - let admin manually choose
-          // which part of the photo shows, instead of auto-cropping from the center.
-          openImageCropper(file, 16, 7, 1200, (dataUrl) => {
-            homeSliderImages.push({ id: nextSliderImageId++, image: dataUrl, caption, link });
-            saveHomeSliderImages();
-            renderSliderImagesAdminList();
-            renderHomeHero();
-            fileEl.value = '';
-            captionEl.value = '';
-            linkEl.value = '';
-            alert('✓ Slide added.');
+          openImageCropper(file, 9 / 16, (croppedDataUrl) => {
+            compressDataUrlImage(croppedDataUrl, 1200, 0.82, 'image/jpeg').then((dataUrl) => {
+              homeSliderImages.push({ id: nextSliderImageId++, image: dataUrl, caption, link });
+              saveHomeSliderImages();
+              renderSliderImagesAdminList();
+              renderHomeHero();
+              fileEl.value = '';
+              captionEl.value = '';
+              linkEl.value = '';
+              alert('✓ Slide added.');
+            });
           });
         }
 
@@ -6951,7 +6893,9 @@
             alert(`✓ "${name}" added.`);
           };
           if (file) {
-            compressImageFile(file, 700, 0.9, 'image/png').then(finish);
+            openImageCropper(file, 1, (croppedDataUrl) => {
+              compressDataUrlImage(croppedDataUrl, 700, 0.9, 'image/png').then(finish);
+            }, () => { fileEl.value = ''; });
           } else {
             finish('');
           }
@@ -7019,7 +6963,9 @@
             alert('✓ Bank details saved.');
           };
           if (file) {
-            compressImageFile(file, 700, 0.9, 'image/png').then(dataUrl => finish(dataUrl));
+            openImageCropper(file, 1, (croppedDataUrl) => {
+              compressDataUrlImage(croppedDataUrl, 700, 0.9, 'image/png').then(dataUrl => finish(dataUrl));
+            }, () => { fileEl.value = ''; });
           } else {
             if (!details && !(bankQR && bankQR.image)) { alert('Please add either a QR code image or account details (bank name/account number) so customers can pay.'); return; }
             finish(null);
@@ -7637,14 +7583,16 @@
             inputEl.value = '';
             return;
           }
-          compressImageFile(file, 500, 0.75).then(dataUrl => {
-            const me = USERS[currentUser.username];
-            if (!me) return;
-            me.profilePhoto = dataUrl;
-            saveUsers();
-            updateTopBarForUser();
-            renderMyAccount();
-          });
+          openImageCropper(file, 1, (croppedDataUrl) => {
+            compressDataUrlImage(croppedDataUrl, 500, 0.75, 'image/jpeg').then(dataUrl => {
+              const me = USERS[currentUser.username];
+              if (!me) return;
+              me.profilePhoto = dataUrl;
+              saveUsers();
+              updateTopBarForUser();
+              renderMyAccount();
+            });
+          }, () => { inputEl.value = ''; });
         }
 
         function removeProfilePhoto() {
@@ -7853,11 +7801,19 @@
           };
 
           if (isJpeg) {
-            // JPEG certificates/ID docs/leave slips get compressed just like other photos so
-            // they don't quietly push the cloud sync over Firestore's 1MB document limit.
-            compressImageFile(file, 1200, 0.75).then(finishAttachment).catch(() => {
+            // JPEG certificates/ID docs/leave slips get a manual crop step, then get
+            // compressed just like other photos so they don't quietly push the cloud
+            // sync over Firestore's 1MB document limit.
+            openImageCropper(file, null, (croppedDataUrl) => {
+              compressDataUrlImage(croppedDataUrl, 1200, 0.75, 'image/jpeg').then(finishAttachment).catch(() => {
+                const lbl = document.getElementById(`${holderKey}-filename`);
+                if (lbl) { lbl.textContent = '⚠️ Could not read file, please try again.'; lbl.style.color = '#c0392b'; }
+              });
+            }, () => {
+              window.__attachments[holderKey] = null;
+              inputEl.value = '';
               const lbl = document.getElementById(`${holderKey}-filename`);
-              if (lbl) { lbl.textContent = '⚠️ Could not read file, please try again.'; lbl.style.color = '#c0392b'; }
+              if (lbl) { lbl.textContent = ''; }
             });
             return;
           }
