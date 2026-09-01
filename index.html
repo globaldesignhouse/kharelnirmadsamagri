@@ -2586,14 +2586,14 @@
                   <div class="qr-tile-grid">
                     ${walletQRs.map(w => `
                       <div class="qr-tile ${w.id === selectedWalletQRId ? 'selected' : ''}" onclick="selectWalletQR(${w.id})">
-                        <img src="${w.image}">${escapeHtml(w.name)}
+                        ${w.image ? `<img src="${w.image}">` : `<div style="font-size:28px;">💳</div>`}${escapeHtml(w.name)}
                       </div>
                     `).join('')}
                   </div>
                   <div id="walletQRDisplay"></div>
                 ` : `
                   <p style="background: #fff3e0; color: #f57c00; padding: 12px; border-radius: 4px; margin-bottom: 15px; font-size: 13px;">
-                    ⚠️ Admin hasn't added a wallet QR code yet. Please choose another payment method or contact us.
+                    ⚠️ Admin hasn't added a wallet yet. Please choose another payment method or contact us.
                   </p>
                 `}
                 <div style="margin: 15px 0;">
@@ -2611,10 +2611,12 @@
               <div style="background: white; border-radius: 8px; padding: 30px;">
                 <h2 style="color: #1a472a; margin-bottom: 10px;">🏦 Bank Transfer</h2>
                 <p style="color: #666; margin-bottom: 20px;">Amount to Pay: <strong>Rs ${total.toLocaleString()}</strong></p>
-                ${bankQR && bankQR.image ? `
-                  <div style="text-align:center; margin-bottom:15px;">
-                    <img src="${bankQR.image}" style="width:180px; height:180px; object-fit:contain; border:1px solid #eee; border-radius:8px; padding:8px;">
-                  </div>
+                ${bankQR && (bankQR.image || bankQR.details) ? `
+                  ${bankQR.image ? `
+                    <div style="text-align:center; margin-bottom:15px;">
+                      <img src="${bankQR.image}" style="width:180px; height:180px; object-fit:contain; border:1px solid #eee; border-radius:8px; padding:8px;">
+                    </div>
+                  ` : ''}
                   ${bankQR.details ? `<p style="text-align:center; font-size:13px; color:#444; margin-bottom:15px;">${escapeHtml(bankQR.details)}</p>` : ''}
                 ` : `
                   <p style="background: #fff3e0; color: #f57c00; padding: 12px; border-radius: 4px; margin-bottom: 15px; font-size: 13px;">
@@ -2705,12 +2707,14 @@
           const w = walletQRs.find(x => x.id === id);
           const display = document.getElementById('walletQRDisplay');
           if (!display) return;
-          display.innerHTML = w ? `
+          if (!w) { display.innerHTML = ''; return; }
+          display.innerHTML = `
             <div style="text-align:center; margin:15px 0;">
-              <div style="font-weight:700; color:#1a472a; margin-bottom:8px;">Scan with ${escapeHtml(w.name)} to pay Rs ${currentOrder.total.toLocaleString()}</div>
-              <img src="${w.image}" style="width:200px; height:200px; object-fit:contain; border:1px solid #eee; border-radius:8px; padding:8px;">
+              <div style="font-weight:700; color:#1a472a; margin-bottom:8px;">Pay Rs ${currentOrder.total.toLocaleString()} via ${escapeHtml(w.name)}</div>
+              ${w.image ? `<img src="${w.image}" style="width:200px; height:200px; object-fit:contain; border:1px solid #eee; border-radius:8px; padding:8px;">` : ''}
+              ${w.details ? `<p style="font-size:13px; color:#444; background:#f3f3f3; border-radius:6px; padding:10px; margin-top:${w.image ? '10px' : '0'}; display:inline-block;">${escapeHtml(w.details)}</p>` : ''}
             </div>
-          ` : '';
+          `;
         }
 
         function processWalletPayment() {
@@ -5901,14 +5905,16 @@
 
               <h3 style="margin: 20px 0 12px; font-size: 14px; border-bottom: 2px solid #2d6d48; padding-bottom: 8px;">💳 Digital Wallet &amp; Bank QR Codes</h3>
               <div style="max-width: 520px; margin-bottom: 24px;">
-                <p style="font-size:12px; color:#888; margin-bottom:12px;">Add a QR code image for each wallet (eSewa, Khalti, IME Pay, bank QR, etc). Customers select one at Checkout → Digital Wallet, scan it to pay, then enter the transaction ID to complete the order.</p>
+                <p style="font-size:12px; color:#888; margin-bottom:12px;">Add each wallet (eSewa, Khalti, IME Pay, bank QR, etc) with a QR code image, account details (ID/number), or both. If a QR photo isn't ready yet, just fill in the account details — customers can still pay by typing those in manually.</p>
                 <div id="walletQRList" style="display:flex; flex-wrap:wrap; gap:12px; margin-bottom:16px;"></div>
                 <div style="background:#f9f9f9; border-radius:8px; padding:14px;">
                   <label style="display:block; font-weight:600; margin-bottom:6px;">Wallet Name</label>
                   <input type="text" class="form-input" id="newWalletName" placeholder="e.g. eSewa, Khalti, IME Pay" style="margin-bottom:10px;">
-                  <label style="display:block; font-weight:600; margin-bottom:6px;">QR Code Image</label>
+                  <label style="display:block; font-weight:600; margin-bottom:6px;">Account Details (ID / Number / Name shown to customer)</label>
+                  <input type="text" class="form-input" id="newWalletDetails" placeholder="e.g. eSewa ID: 98XXXXXXXX, Name: Kharel Nirmad Samagri" style="margin-bottom:10px;">
+                  <label style="display:block; font-weight:600; margin-bottom:6px;">QR Code Image <span style="font-weight:400; color:#888;">(optional if you filled in account details above)</span></label>
                   <input type="file" accept="image/*" id="newWalletImage" style="margin-bottom:10px;">
-                  <button class="checkout-btn" style="width:auto; padding:8px 16px;" onclick="adminAddWalletQR()">➕ Add Wallet QR</button>
+                  <button class="checkout-btn" style="width:auto; padding:8px 16px;" onclick="adminAddWalletQR()">➕ Add Wallet</button>
                 </div>
 
                 <h4 style="margin:20px 0 10px; font-size:13px; color:#1a472a;">🏦 Bank Transfer QR</h4>
@@ -5916,9 +5922,9 @@
                 <div style="background:#f9f9f9; border-radius:8px; padding:14px;">
                   <label style="display:block; font-weight:600; margin-bottom:6px;">Bank / Account Details (shown to customer)</label>
                   <input type="text" class="form-input" id="bankDetailsText" placeholder="e.g. Nepal Bank Ltd, A/C: Kharel Nirmad Samagri, 0123456789" value="${bankQR && bankQR.details ? escapeAttr(bankQR.details) : ''}" style="margin-bottom:10px;">
-                  <label style="display:block; font-weight:600; margin-bottom:6px;">Bank QR Code Image</label>
+                  <label style="display:block; font-weight:600; margin-bottom:6px;">Bank QR Code Image <span style="font-weight:400; color:#888;">(optional if you filled in account details above)</span></label>
                   <input type="file" accept="image/*" id="bankQRImage" style="margin-bottom:10px;">
-                  <button class="checkout-btn" style="width:auto; padding:8px 16px;" onclick="adminSaveBankQR()">💾 Save Bank QR</button>
+                  <button class="checkout-btn" style="width:auto; padding:8px 16px;" onclick="adminSaveBankQR()">💾 Save Bank Details</button>
                   ${bankQR ? `<button class="checkout-btn" style="width:auto; padding:8px 16px; background:#c0392b;" onclick="adminDeleteBankQR()">🗑️ Remove</button>` : ''}
                 </div>
               </div>
@@ -6036,14 +6042,18 @@
           const el = document.getElementById('walletQRList');
           if (!el) return;
           if (!walletQRs.length) {
-            el.innerHTML = `<div style="color:#999; font-style:italic; font-size:13px;">No wallet QR codes added yet.</div>`;
+            el.innerHTML = `<div style="color:#999; font-style:italic; font-size:13px;">No wallets added yet.</div>`;
             return;
           }
           el.innerHTML = walletQRs.map(w => `
-            <div style="text-align:center; border:1px solid #eee; border-radius:8px; padding:8px; width:110px;">
-              <img src="${w.image}" style="width:90px; height:90px; object-fit:contain;">
+            <div style="text-align:center; border:1px solid #eee; border-radius:8px; padding:8px; width:130px;">
+              ${w.image ? `<img src="${w.image}" style="width:90px; height:90px; object-fit:contain;">` : `<div style="width:90px; height:90px; margin:0 auto; display:flex; align-items:center; justify-content:center; font-size:28px; background:#f3f3f3; border-radius:6px;">💳</div>`}
               <div style="font-size:12px; font-weight:600; margin-top:4px;">${escapeHtml(w.name)}</div>
-              <button style="font-size:11px; color:#c0392b; background:none; border:none; cursor:pointer; margin-top:4px;" onclick="adminDeleteWalletQR(${w.id})">🗑️ Remove</button>
+              ${w.details ? `<div style="font-size:10px; color:#666; margin-top:2px; word-break:break-word;">${escapeHtml(w.details)}</div>` : ''}
+              <div style="display:flex; gap:6px; justify-content:center; margin-top:4px;">
+                <button style="font-size:11px; color:#1565c0; background:none; border:none; cursor:pointer;" onclick="adminEditWalletQR(${w.id})">✏️ Edit</button>
+                <button style="font-size:11px; color:#c0392b; background:none; border:none; cursor:pointer;" onclick="adminDeleteWalletQR(${w.id})">🗑️ Remove</button>
+              </div>
             </div>
           `).join('');
         }
@@ -6051,24 +6061,48 @@
         function adminAddWalletQR() {
           if (!isAdmin()) return;
           const nameEl = document.getElementById('newWalletName');
+          const detailsEl = document.getElementById('newWalletDetails');
           const fileEl = document.getElementById('newWalletImage');
           const name = nameEl.value.trim();
+          const details = detailsEl.value.trim();
           if (!name) { alert('Please enter a wallet name (e.g. eSewa, Khalti).'); return; }
           const file = fileEl.files && fileEl.files[0];
-          if (!file) { alert('Please choose a QR code image.'); return; }
-          compressImageFile(file, 700, 0.9, 'image/png').then(dataUrl => {
-            walletQRs.push({ id: nextWalletQRId++, name, image: dataUrl });
+          if (!file && !details) { alert('Please add either a QR code image or account details (ID/number) so customers can pay.'); return; }
+          const finish = (dataUrl) => {
+            walletQRs.push({ id: nextWalletQRId++, name, details, image: dataUrl || '' });
             saveWalletQRs();
             renderWalletQRAdminList();
             nameEl.value = '';
+            detailsEl.value = '';
             fileEl.value = '';
-            alert(`✓ "${name}" QR code added.`);
-          });
+            alert(`✓ "${name}" added.`);
+          };
+          if (file) {
+            compressImageFile(file, 700, 0.9, 'image/png').then(finish);
+          } else {
+            finish('');
+          }
+        }
+
+        function adminEditWalletQR(id) {
+          if (!isAdmin()) return;
+          const w = walletQRs.find(x => x.id === id);
+          if (!w) return;
+          const newName = prompt('Wallet name:', w.name);
+          if (newName === null) return;
+          const newDetails = prompt('Account details shown to customer (ID/number/name) - leave blank if using QR only:', w.details || '');
+          if (newDetails === null) return;
+          if (!newName.trim()) { alert('Name cannot be empty.'); return; }
+          if (!newName.trim() && !newDetails.trim() && !w.image) { alert('Please keep at least a QR image or account details.'); return; }
+          w.name = newName.trim();
+          w.details = newDetails.trim();
+          saveWalletQRs();
+          renderWalletQRAdminList();
         }
 
         function adminDeleteWalletQR(id) {
           if (!isAdmin()) return;
-          if (!confirm('Remove this wallet QR code?')) return;
+          if (!confirm('Remove this wallet?')) return;
           walletQRs = walletQRs.filter(w => w.id !== id);
           saveWalletQRs();
           renderWalletQRAdminList();
@@ -6090,9 +6124,13 @@
         function renderBankQRAdminPreview() {
           const el = document.getElementById('bankQRPreview');
           if (!el) return;
-          el.innerHTML = bankQR && bankQR.image
-            ? `<img src="${bankQR.image}" style="width:100px; height:100px; object-fit:contain; border:1px solid #eee; border-radius:8px; padding:6px;">`
-            : `<div style="color:#999; font-style:italic; font-size:13px;">No bank QR code added yet.</div>`;
+          if (bankQR && bankQR.image) {
+            el.innerHTML = `<img src="${bankQR.image}" style="width:100px; height:100px; object-fit:contain; border:1px solid #eee; border-radius:8px; padding:6px;">`;
+          } else if (bankQR && bankQR.details) {
+            el.innerHTML = `<div style="font-size:12px; color:#444; background:#f3f3f3; border-radius:6px; padding:8px;">💳 ${escapeHtml(bankQR.details)} <span style="color:#999;">(no QR image yet)</span></div>`;
+          } else {
+            el.innerHTML = `<div style="color:#999; font-style:italic; font-size:13px;">No bank details added yet.</div>`;
+          }
         }
 
         function adminSaveBankQR() {
@@ -6105,12 +6143,12 @@
             saveBankQRData();
             renderBankQRAdminPreview();
             renderAdminSettings();
-            alert('✓ Bank QR details saved.');
+            alert('✓ Bank details saved.');
           };
           if (file) {
             compressImageFile(file, 700, 0.9, 'image/png').then(dataUrl => finish(dataUrl));
           } else {
-            if (!bankQR || !bankQR.image) { alert('Please choose a QR code image.'); return; }
+            if (!details && !(bankQR && bankQR.image)) { alert('Please add either a QR code image or account details (bank name/account number) so customers can pay.'); return; }
             finish(null);
           }
         }
@@ -9237,6 +9275,49 @@
         setTimeout(() => { if (el.parentNode) el.remove(); }, 12000);
       }
 
+      // Re-reads every synced piece of data from localStorage into the app's live
+      // variables (they're only loaded once at page start, so a background sync
+      // update - QR codes, prices, badge messages etc - wouldn't otherwise show up
+      // on screen until the page was manually reloaded), then repaints whatever the
+      // customer/admin currently has open. Deliberately does NOT touch `cart`, which
+      // is in-memory only, so an in-progress order is never lost by a background sync.
+      function refreshAppStateAfterSync() {
+        try {
+          products = loadProducts();
+          USERS = loadUsers();
+          orders = JSON.parse(localStorage.getItem('kharel_orders')) || [];
+          wastageRecords = JSON.parse(localStorage.getItem('kharel_wastage')) || [];
+          employeeWastagePermissions = JSON.parse(localStorage.getItem('kharel_employee_wastage_perms')) || {};
+          categories = JSON.parse(localStorage.getItem('kharel_categories')) || [];
+          certificates = JSON.parse(localStorage.getItem('kharel_certificates')) || [];
+          leaveRequests = JSON.parse(localStorage.getItem('kharel_leave_requests')) || [];
+          stockMovements = JSON.parse(localStorage.getItem('kharel_stock_movements')) || [];
+          eodClosures = JSON.parse(localStorage.getItem('kharel_eod_closures')) || [];
+          PAN_NUMBER = localStorage.getItem('kharel_pan_number') || PAN_NUMBER;
+          PHONE = localStorage.getItem('kharel_whatsapp_number') || PHONE;
+          const savedTax = parseFloat(localStorage.getItem('kharel_tax_rate'));
+          if (!isNaN(savedTax)) TAX_RATE = savedTax;
+          HERO_FEATS = loadHeroFeatMessages();
+        } catch (e) { console.error('[Kharel Sync] refresh error:', e); }
+
+        // Repaint the pieces that are visible right now. Wallet QR codes, bank QR,
+        // and product reviews are already read fresh from localStorage every time
+        // they're rendered, so simply re-calling these render functions is enough
+        // to bring a QR code update to a second phone without a full page reload.
+        try { renderHomeHero(); } catch (e) {}
+        const activeTabEl = document.querySelector('.tab-content.active');
+        const activeTab = activeTabEl ? activeTabEl.id : null;
+        try {
+          if (activeTab === 'home' || !activeTab) renderProducts();
+          if (activeTab === 'checkout') renderCheckout();
+          if (activeTab === 'orders') renderOrders();
+          if (activeTab === 'refunds' && typeof renderRefunds === 'function') renderRefunds();
+          if (activeTab === 'sales' && typeof renderSales === 'function') renderSales();
+          if (activeTab === 'admin' && typeof renderAdmin === 'function') renderAdmin();
+          if (activeTab === 'stockmovement' && typeof renderStockMovementTab === 'function') renderStockMovementTab();
+        } catch (e) { console.error('[Kharel Sync] re-render error:', e); }
+      }
+
       function showSyncToast() {
         if (document.getElementById('kharelSyncToast')) return;
         const el = document.createElement('div');
@@ -9245,8 +9326,10 @@
         el.textContent = '🔄 Syncing new data...';
         document.body.appendChild(el);
         
-        // Auto-refresh after 2 seconds (gives Firebase time to sync)
+        // Give Firebase a moment, then refresh every visible piece of the app with
+        // the newly-synced data (see refreshAppStateAfterSync above).
         setTimeout(() => {
+          refreshAppStateAfterSync();
           // Recalculate leave balances for current user
           if (currentUser && currentUser.username) {
             recalculateLeaveBalance(currentUser.username);
