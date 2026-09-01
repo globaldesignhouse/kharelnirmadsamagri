@@ -797,6 +797,12 @@
         .img-cropper-controls { display:flex; align-items:center; gap:8px; margin-top:12px; }
         .img-cropper-btns { display:flex; gap:10px; margin-top: 4px; }
         .img-cropper-btns .checkout-btn { flex:1; }
+        .img-cropper-aspects { display:flex; gap:6px; flex-wrap:wrap; justify-content:center; margin-bottom:10px; }
+        .img-cropper-aspect-btn {
+          padding: 5px 12px; border-radius: 20px; border: 1px solid #ccc; background:#f4f4f4;
+          font-size: 12px; cursor: pointer; color:#444; transition: all 0.2s;
+        }
+        .img-cropper-aspect-btn.active { background:#2d6d48; color:#fff; border-color:#2d6d48; }
         .cat-chip-row { display:flex; gap:8px; overflow-x:auto; padding-bottom:8px; margin-bottom:10px; }
         .cat-chip {
           flex:0 0 auto; padding:7px 16px; border-radius:20px; border:1px solid #ddd; background:#fff;
@@ -1908,12 +1914,14 @@
           });
         }
 
-        // ---------- Manual image cropper (drag to reposition, slider to zoom) ----------
+        // ---------- Manual image cropper (drag to reposition, slider to zoom, pick aspect ratio) ----------
         // Opens a modal so the admin can choose exactly which part of a photo shows
-        // inside a fixed-shape box (e.g. the 16:7 home banner), instead of the photo
-        // being auto-cropped from the center. onConfirm(dataUrl) is called with the
-        // final cropped+compressed JPEG once the admin taps "Use This Photo"; nothing
-        // happens if they cancel.
+        // inside a shaped box (e.g. the 16:7 home banner, or a 4:3 product photo),
+        // instead of the photo being auto-cropped from the center. The admin can also
+        // switch to a different aspect ratio (Square, 4:3, 16:9, Tall, or type their
+        // own Custom W:H ratio) right inside the modal.
+        // onConfirm(dataUrl) is called with the final cropped+compressed JPEG once the
+        // admin taps "Use This Photo"; nothing happens if they cancel.
         function openImageCropper(file, aspectW, aspectH, outputWidth, onConfirm, onCancel) {
           const reader = new FileReader();
           reader.onload = (e) => {
@@ -1926,12 +1934,26 @@
           reader.readAsDataURL(file);
         }
 
-        function buildImageCropperModal(img, aspectW, aspectH, outputWidth, onConfirm, onCancel) {
+        function buildImageCropperModal(img, defaultAspectW, defaultAspectH, outputWidth, onConfirm, onCancel) {
           const already = document.getElementById('imgCropperOverlay');
           if (already) already.remove();
 
-          const viewportW = Math.min(360, window.innerWidth - 40);
-          const viewportH = Math.round(viewportW * aspectH / aspectW);
+          const naturalW = img.naturalWidth;
+          const naturalH = img.naturalHeight;
+
+          // Aspect-ratio presets the admin can pick from. "Original" is whatever ratio
+          // this upload spot normally uses (banner = 16:7, product = 4:3, etc); "Custom"
+          // lets the admin type their own W:H ratio instead of picking a preset shape.
+          const presets = [{ label: 'Original', w: defaultAspectW, h: defaultAspectH }];
+          [['Square', 1, 1], ['4:3', 4, 3], ['16:9', 16, 9], ['Tall', 9, 16]].forEach(([label, w, h]) => {
+            if (!(w / h === defaultAspectW / defaultAspectH)) presets.push({ label, w, h });
+          });
+          presets.push({ label: 'Custom', w: null, h: null });
+
+          function gcd(a, b) { return b ? gcd(b, a % b) : a; }
+          const g = gcd(naturalW, naturalH) || 1;
+          const naturalRatioW = Math.round(naturalW / g);
+          const naturalRatioH = Math.round(naturalH / g);
 
           const overlay = document.createElement('div');
           overlay.id = 'imgCropperOverlay';
@@ -1939,7 +1961,16 @@
           overlay.innerHTML = `
             <div class="img-cropper-box">
               <div class="img-cropper-title">🖼️ Adjust Photo</div>
-              <div class="img-cropper-viewport" id="cropViewport" style="width:${viewportW}px; height:${viewportH}px;">
+              <div class="img-cropper-aspects" id="cropAspectRow">
+                ${presets.map((p, i) => `<button type="button" class="img-cropper-aspect-btn${i === 0 ? ' active' : ''}" data-idx="${i}">${p.label}</button>`).join('')}
+              </div>
+              <div id="cropCustomRow" style="display:none; align-items:center; justify-content:center; gap:6px; margin-bottom:10px; font-size:12px;">
+                <input type="number" id="cropCustomW" min="1" step="any" value="${naturalRatioW}" style="width:56px; padding:4px; border:1px solid #ccc; border-radius:4px; text-align:center;">
+                <span>:</span>
+                <input type="number" id="cropCustomH" min="1" step="any" value="${naturalRatioH}" style="width:56px; padding:4px; border:1px solid #ccc; border-radius:4px; text-align:center;">
+                <button type="button" id="cropCustomApplyBtn" class="img-cropper-aspect-btn" style="background:#1565c0; color:#fff; border-color:#1565c0;">Apply</button>
+              </div>
+              <div class="img-cropper-viewport" id="cropViewport">
                 <img id="cropImg" alt="crop preview">
               </div>
               <div class="img-cropper-controls">
@@ -1947,7 +1978,7 @@
                 <input type="range" id="cropZoom" min="100" max="300" value="100" style="flex:1;">
                 <span style="font-size:15px;">🔍+</span>
               </div>
-              <p style="font-size:11px; color:#888; text-align:center; margin:6px 0 12px;">Drag the photo to reposition &middot; use the slider to zoom</p>
+              <p style="font-size:11px; color:#888; text-align:center; margin:6px 0 12px;">Choose a shape above &middot; drag the photo to reposition &middot; use the slider to zoom</p>
               <div class="img-cropper-btns">
                 <button class="checkout-btn" id="cropCancelBtn" style="background:#888;">✕ Cancel</button>
                 <button class="checkout-btn" id="cropConfirmBtn">✓ Use This Photo</button>
@@ -1958,15 +1989,13 @@
           const viewport = document.getElementById('cropViewport');
           const cropImgEl = document.getElementById('cropImg');
           const zoomSlider = document.getElementById('cropZoom');
+          const customRow = document.getElementById('cropCustomRow');
+          const customWInput = document.getElementById('cropCustomW');
+          const customHInput = document.getElementById('cropCustomH');
           cropImgEl.src = img.src;
 
-          const naturalW = img.naturalWidth;
-          const naturalH = img.naturalHeight;
-          const baseScale = Math.max(viewportW / naturalW, viewportH / naturalH);
-
-          let scale = baseScale;
-          let offsetX = (viewportW - naturalW * scale) / 2;
-          let offsetY = (viewportH - naturalH * scale) / 2;
+          let aspectW = defaultAspectW, aspectH = defaultAspectH;
+          let viewportW, viewportH, baseScale, scale, offsetX, offsetY;
 
           function applyTransform() {
             const dispW = naturalW * scale;
@@ -1979,7 +2008,60 @@
             offsetY = Math.max(minY, Math.min(0, offsetY));
             cropImgEl.style.transform = `translate(${offsetX}px, ${offsetY}px)`;
           }
-          applyTransform();
+
+          // Rebuilds the crop box for a newly-picked aspect ratio (a preset, or a
+          // custom W:H the admin typed in) and re-centers/re-fits the photo inside it.
+          function setAspect(w, h) {
+            aspectW = w > 0 ? w : naturalW;
+            aspectH = h > 0 ? h : naturalH;
+
+            const maxW = Math.min(360, window.innerWidth - 40);
+            const maxH = 420;
+            viewportW = maxW;
+            viewportH = Math.round(viewportW * aspectH / aspectW);
+            if (viewportH > maxH) {
+              viewportH = maxH;
+              viewportW = Math.round(viewportH * aspectW / aspectH);
+            }
+            viewport.style.width = viewportW + 'px';
+            viewport.style.height = viewportH + 'px';
+
+            baseScale = Math.max(viewportW / naturalW, viewportH / naturalH);
+            scale = baseScale;
+            offsetX = (viewportW - naturalW * scale) / 2;
+            offsetY = (viewportH - naturalH * scale) / 2;
+            zoomSlider.value = 100;
+            applyTransform();
+          }
+          setAspect(defaultAspectW, defaultAspectH);
+
+          function applyCustomAspect() {
+            const w = parseFloat(customWInput.value);
+            const h = parseFloat(customHInput.value);
+            if (!(w > 0) || !(h > 0)) { alert('Please enter a valid ratio, e.g. 5 : 2'); return; }
+            setAspect(w, h);
+          }
+          document.getElementById('cropCustomApplyBtn').onclick = applyCustomAspect;
+          [customWInput, customHInput].forEach(inp => {
+            inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') applyCustomAspect(); });
+          });
+
+          document.getElementById('cropAspectRow').addEventListener('click', (e) => {
+            const btn = e.target.closest('.img-cropper-aspect-btn');
+            if (!btn) return;
+            document.querySelectorAll('.img-cropper-aspect-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            const p = presets[parseInt(btn.dataset.idx, 10)];
+            if (p.w == null) {
+              // "Custom" picked - reveal the W:H fields and apply whatever's in them
+              // (starts pre-filled with the photo's own simplified ratio).
+              customRow.style.display = 'flex';
+              applyCustomAspect();
+            } else {
+              customRow.style.display = 'none';
+              setAspect(p.w, p.h);
+            }
+          });
 
           let dragging = false, startX = 0, startY = 0, startOffX = 0, startOffY = 0;
           function pointerDown(e) {
@@ -2028,9 +2110,10 @@
 
           document.getElementById('cropCancelBtn').onclick = cleanup;
           document.getElementById('cropConfirmBtn').onclick = () => {
-            const outputHeight = Math.round(outputWidth * aspectH / aspectW);
+            const finalOutputWidth = outputWidth;
+            const outputHeight = Math.round(finalOutputWidth * aspectH / aspectW);
             const canvas = document.createElement('canvas');
-            canvas.width = outputWidth;
+            canvas.width = finalOutputWidth;
             canvas.height = outputHeight;
             const ctx = canvas.getContext('2d');
             const sx = (0 - offsetX) / scale;
@@ -2039,7 +2122,7 @@
             const sh = viewportH / scale;
             let dataUrl;
             try {
-              ctx.drawImage(cropImgEl, sx, sy, sw, sh, 0, 0, outputWidth, outputHeight);
+              ctx.drawImage(cropImgEl, sx, sy, sw, sh, 0, 0, finalOutputWidth, outputHeight);
               dataUrl = canvas.toDataURL('image/jpeg', 0.85);
             } catch (err) {
               dataUrl = img.src; // fallback: use the uncropped original
@@ -5756,9 +5839,12 @@
             inputEl.value = '';
             return;
           }
-          compressImageFile(file, 900, 0.72).then(dataUrl => {
+          // Product cards show a 4:3 photo - let admin manually choose which part of
+          // the photo shows (and pick a different shape if they want) instead of it
+          // being auto-cropped from the center.
+          openImageCropper(file, 4, 3, 900, (dataUrl) => {
             const product = products.find(p => p.id === id);
-            if (!product) return;
+            if (!product) { inputEl.value = ''; return; }
             product.image = dataUrl;
             saveProducts();
             renderProducts();
@@ -5766,7 +5852,8 @@
             const iconSpan = document.getElementById(`adminIconPreview-${id}`);
             if (img) { img.src = product.image; img.style.display = ''; }
             if (iconSpan) iconSpan.style.display = 'none';
-          });
+            inputEl.value = '';
+          }, () => { inputEl.value = ''; });
         }
 
         function removeProductImage(id) {
@@ -6432,11 +6519,13 @@
             inputEl.value = '';
             return;
           }
-          compressImageFile(file, 900, 0.72).then(dataUrl => {
+          // Same manual crop as existing products - let admin pick which part of the
+          // photo shows before it's set as the new product's picture.
+          openImageCropper(file, 4, 3, 900, (dataUrl) => {
             newProductImageData = dataUrl;
             const preview = document.getElementById('newProdImgPreview');
             if (preview) { preview.src = newProductImageData; preview.style.display = 'inline-block'; }
-          });
+          }, () => { inputEl.value = ''; });
         }
 
         function adminDeleteProduct(id) {
