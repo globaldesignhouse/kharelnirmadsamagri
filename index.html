@@ -2659,7 +2659,7 @@
           el.innerHTML = `
             <div class="home-img-slider" id="homeImgSlider">
               ${homeSliderImages.map((s, i) => `
-                <div class="his-slide ${i === homeSliderIndex ? 'active' : ''}" data-idx="${i}" onclick="${s.link ? `homeSliderClick('${escapeAttr(s.link)}')` : ''}">
+                <div class="his-slide ${i === homeSliderIndex ? 'active' : ''}" data-idx="${i}" onclick="viewBannerImageLightbox('${s.image.replace(/'/g, "\\'")}', '${escapeAttr(s.caption || 'Banner').replace(/'/g, "\\'")}', ${s.link ? `'${escapeAttr(s.link).replace(/'/g, "\\'")}'` : 'null'})">
                   <img src="${s.image}" alt="${escapeAttr(s.caption || 'Banner')}">
                   ${s.caption ? `<div class="his-caption">${escapeHtml(s.caption)}</div>` : ''}
                 </div>
@@ -2704,6 +2704,27 @@
         function homeSliderClick(link) {
           if (!link) return;
           window.open(link, '_blank');
+        }
+
+        // Opens the banner/slider image full-size in a big lightbox so it can be
+        // viewed properly - just tap the banner. If Admin has set a click-through
+        // link on this slide, an "Open Link" button is shown inside the lightbox too.
+        function viewBannerImageLightbox(src, caption, link) {
+          if (!src) return;
+          const overlay = document.createElement('div');
+          overlay.className = 'modal-overlay';
+          overlay.onclick = function (e) { if (e.target === overlay) overlay.remove(); };
+          overlay.innerHTML = `
+            <div class="modal-content" style="max-width: 92vw; width:auto; max-height: 92vh; overflow:auto; text-align:center; padding:16px;">
+              <div class="modal-header">
+                <span>${escapeHtml(caption || 'Banner')}</span>
+                <button class="close-modal" onclick="this.closest('.modal-overlay').remove()">×</button>
+              </div>
+              <img src="${src}" style="max-width:100%; max-height:78vh; border-radius:6px;">
+              ${link ? `<button class="checkout-btn" style="width:auto; padding:8px 20px; margin-top:14px;" onclick="homeSliderClick('${escapeAttr(link).replace(/'/g, "\\'")}')">🔗 Open Link</button>` : ''}
+            </div>
+          `;
+          document.body.appendChild(overlay);
         }
 
         function renderHomeHero() {
