@@ -725,8 +725,8 @@
            still looks fine on a brand-new setup. */
         .hero-fallback {
           background: linear-gradient(135deg,#c0392b 0%,#e67e22 100%);
-          color:#fff; border-radius:10px; padding:34px 20px; text-align:center;
-          margin: 14px 0 16px;
+          color:#fff; border-radius:10px; padding:20px; box-sizing:border-box;
+          margin: 14px 0 16px; aspect-ratio:16/9; display:flex;
         }
         .hero-fallback .hf-title { font-size:20px; font-weight:800; margin-bottom:6px; }
         .hero-fallback .hf-sub { font-size:13px; opacity:.9; }
@@ -775,13 +775,15 @@
         }
         .home-img-slider .his-dot.active { background:#fff; width:18px; border-radius:4px; }
         .home-img-slider .his-banner-overlay {
-          position:absolute; top:0; left:0; right:0; z-index:2; padding:22px 16px 46px;
-          background:linear-gradient(180deg, rgba(0,0,0,.6), rgba(0,0,0,0) 75%);
-          color:#fff; text-align:center; pointer-events:none;
+          position:absolute; inset:0; z-index:2; padding:18px; box-sizing:border-box;
+          display:flex; color:#fff; pointer-events:none;
         }
         .home-img-slider .his-banner-overlay .hf-title { font-size:19px; font-weight:800; margin-bottom:6px; text-shadow:0 1px 4px rgba(0,0,0,.55); }
         .home-img-slider .his-banner-overlay .hf-sub { font-size:12px; opacity:.95; text-shadow:0 1px 4px rgba(0,0,0,.55); }
         @media (max-width: 480px) { .home-img-slider { aspect-ratio:16/9; } }
+        .hero-pos-grid { display:grid; grid-template-columns:repeat(3, 38px); grid-template-rows:repeat(3, 38px); gap:6px; margin-bottom:14px; }
+        .hero-pos-grid .hpg-btn { border:1px solid #ccc; background:#fff; border-radius:6px; font-size:16px; cursor:pointer; display:flex; align-items:center; justify-content:center; color:#555; padding:0; }
+        .hero-pos-grid .hpg-btn.active { background:#1a472a; color:#fff; border-color:#1a472a; }
 
         /* ===================== Custom corner-drag image cropper ===================== */
         .img-crop-overlay { position:fixed; inset:0; background:rgba(0,0,0,.88); z-index:6000; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:16px; }
@@ -1203,7 +1205,8 @@
           headlineMain: 'Built to ',
           headlineHighlight: 'Last',
           sub: 'Doors, Windows, Cement & everything for your construction',
-          showTextOverSlider: false
+          showTextOverSlider: false,
+          textPosition: 'top-center'
         };
         function loadHeroBannerSettings() {
           try {
@@ -2562,15 +2565,36 @@
         }
 
         // ---------- Home page image slider ----------
+        // Helpers to turn a "v-h" position code (e.g. "top-left", "center-center",
+        // "bottom-right") into flexbox alignment + a matching dark gradient so the
+        // fallback banner text and the slider text-overlay can both be positioned
+        // anywhere in a 3x3 grid (top/center/bottom x left/center/right).
+        function heroPositionParts(pos) {
+          const parts = (pos || 'top-center').split('-');
+          return { v: parts[0] || 'top', h: parts[1] || 'center' };
+        }
+        function heroTextAlignFor(h) { return h === 'left' ? 'left' : h === 'right' ? 'right' : 'center'; }
+        function heroJustifyFor(h) { return h === 'left' ? 'flex-start' : h === 'right' ? 'flex-end' : 'center'; }
+        function heroAlignFor(v) { return v === 'top' ? 'flex-start' : v === 'bottom' ? 'flex-end' : 'center'; }
+        function heroOverlayGradientFor(v) {
+          if (v === 'top') return 'linear-gradient(180deg, rgba(0,0,0,.6), rgba(0,0,0,0) 65%)';
+          if (v === 'bottom') return 'linear-gradient(0deg, rgba(0,0,0,.6), rgba(0,0,0,0) 65%)';
+          return 'radial-gradient(circle, rgba(0,0,0,.45), rgba(0,0,0,.1) 70%)';
+        }
+        const HERO_POS_ICONS = { 'top-left': '↖', 'top-center': '↑', 'top-right': '↗', 'center-left': '←', 'center-center': '•', 'center-right': '→', 'bottom-left': '↙', 'bottom-center': '↓', 'bottom-right': '↘' };
+
         function renderHomeImageSlider() {
           const el = document.getElementById('homeImgSliderSection');
           if (!el) return;
           if (homeSliderTimer) { clearInterval(homeSliderTimer); homeSliderTimer = null; }
+          const { v, h } = heroPositionParts(HERO_BANNER.textPosition);
           if (!homeSliderImages.length) {
             el.innerHTML = `
-              <div class="hero-fallback">
-                <div class="hf-title">🏗️ ${escapeHtml(HERO_BANNER.headlineMain || 'Kharel Nirmad Samagri Udhyog')}${escapeHtml(HERO_BANNER.headlineHighlight || '')}</div>
-                <div class="hf-sub">${escapeHtml(HERO_BANNER.sub || 'Quality building materials at the best rates')}</div>
+              <div class="hero-fallback" style="align-items:${heroAlignFor(v)}; justify-content:${heroJustifyFor(h)};">
+                <div style="text-align:${heroTextAlignFor(h)};">
+                  <div class="hf-title">🏗️ ${escapeHtml(HERO_BANNER.headlineMain || 'Kharel Nirmad Samagri Udhyog')}${escapeHtml(HERO_BANNER.headlineHighlight || '')}</div>
+                  <div class="hf-sub">${escapeHtml(HERO_BANNER.sub || 'Quality building materials at the best rates')}</div>
+                </div>
               </div>
             `;
             return;
@@ -2585,9 +2609,11 @@
                 </div>
               `).join('')}
               ${HERO_BANNER.showTextOverSlider ? `
-                <div class="his-banner-overlay">
-                  <div class="hf-title">🏗️ ${escapeHtml(HERO_BANNER.headlineMain || 'Kharel Nirmad Samagri Udhyog')}${escapeHtml(HERO_BANNER.headlineHighlight || '')}</div>
-                  <div class="hf-sub">${escapeHtml(HERO_BANNER.sub || 'Quality building materials at the best rates')}</div>
+                <div class="his-banner-overlay" style="align-items:${heroAlignFor(v)}; justify-content:${heroJustifyFor(h)}; background:${heroOverlayGradientFor(v)};">
+                  <div style="text-align:${heroTextAlignFor(h)};">
+                    <div class="hf-title">🏗️ ${escapeHtml(HERO_BANNER.headlineMain || 'Kharel Nirmad Samagri Udhyog')}${escapeHtml(HERO_BANNER.headlineHighlight || '')}</div>
+                    <div class="hf-sub">${escapeHtml(HERO_BANNER.sub || 'Quality building materials at the best rates')}</div>
+                  </div>
                 </div>
               ` : ''}
               ${homeSliderImages.length > 1 ? `
@@ -6682,6 +6708,13 @@
                   <p style="font-size:11px; color:#999; margin-bottom:10px;">Second box is shown in a highlighted color (e.g. "Built to" + "Last").</p>
                   <label style="display:block; font-weight:600; margin-bottom:6px;">Sub-text (line below headline)</label>
                   <input type="text" class="form-input" id="heroBannerSub" value="${escapeAttr(HERO_BANNER.sub)}" style="margin-bottom:10px;">
+                  <label style="display:block; font-weight:600; margin-bottom:6px;">Text Position</label>
+                  <input type="hidden" id="heroBannerTextPosition" value="${escapeAttr(HERO_BANNER.textPosition || 'top-center')}">
+                  <div class="hero-pos-grid" id="heroPosGrid">
+                    ${['top-left', 'top-center', 'top-right', 'center-left', 'center-center', 'center-right', 'bottom-left', 'bottom-center', 'bottom-right'].map(pos => `
+                      <button type="button" class="hpg-btn ${(HERO_BANNER.textPosition || 'top-center') === pos ? 'active' : ''}" onclick="selectHeroPos(this, '${pos}')">${HERO_POS_ICONS[pos]}</button>
+                    `).join('')}
+                  </div>
                   <label style="display:flex; align-items:center; gap:8px; font-size:13px; cursor:pointer; margin-bottom:12px;">
                     <input type="checkbox" id="heroBannerOverSliderToggle" ${HERO_BANNER.showTextOverSlider ? 'checked' : ''}>
                     <span><strong>Show this text on top of the image slider too</strong> (unchecked = once slider images are uploaded, only the plain slider shows, no text)</span>
@@ -6800,14 +6833,22 @@
         }
 
         // ---------- Home page banner text / sliding text / image slider (admin) ----------
+        function selectHeroPos(btn, pos) {
+          const hidden = document.getElementById('heroBannerTextPosition');
+          if (hidden) hidden.value = pos;
+          document.querySelectorAll('#heroPosGrid .hpg-btn').forEach((b) => b.classList.remove('active'));
+          btn.classList.add('active');
+        }
+
         function adminSaveHeroBanner() {
           if (!isAdmin()) return;
           const tagline = document.getElementById('heroBannerTagline').value.trim();
           const headlineMain = document.getElementById('heroBannerHeadlineMain').value;
           const headlineHighlight = document.getElementById('heroBannerHeadlineHighlight').value.trim();
           const sub = document.getElementById('heroBannerSub').value.trim();
+          const textPosition = document.getElementById('heroBannerTextPosition').value || 'top-center';
           const showTextOverSlider = document.getElementById('heroBannerOverSliderToggle').checked;
-          HERO_BANNER = { tagline, headlineMain, headlineHighlight, sub, showTextOverSlider };
+          HERO_BANNER = { tagline, headlineMain, headlineHighlight, sub, showTextOverSlider, textPosition };
           saveHeroBannerSettings();
           renderHomeHero();
           alert('✓ Banner text saved.');
