@@ -748,8 +748,7 @@
         @keyframes hd-scroll { 0%{ transform:translateX(100%);} 100%{ transform:translateX(-100%);} }
         .home-img-slider {
           position:relative; border-radius:10px; overflow:hidden; margin:14px 0 16px;
-          background:#eee; width:100%; aspect-ratio:9/16; min-height:120px;
-          max-width:420px; margin-left:auto; margin-right:auto;
+          background:#eee; width:100%; aspect-ratio:16/9; min-height:120px;
         }
         .home-img-slider .his-slide {
           position:absolute; inset:0; opacity:0; transition:opacity .6s ease; cursor:pointer;
@@ -782,7 +781,7 @@
         }
         .home-img-slider .his-banner-overlay .hf-title { font-size:19px; font-weight:800; margin-bottom:6px; text-shadow:0 1px 4px rgba(0,0,0,.55); }
         .home-img-slider .his-banner-overlay .hf-sub { font-size:12px; opacity:.95; text-shadow:0 1px 4px rgba(0,0,0,.55); }
-        @media (max-width: 480px) { .home-img-slider { aspect-ratio:9/16; max-width:100%; } }
+        @media (max-width: 480px) { .home-img-slider { aspect-ratio:16/9; } }
 
         /* ===================== Custom corner-drag image cropper ===================== */
         .img-crop-overlay { position:fixed; inset:0; background:rgba(0,0,0,.88); z-index:6000; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:16px; }
@@ -6862,7 +6861,7 @@
           if (!file) { alert('Please choose an image.'); return; }
           const caption = captionEl.value.trim();
           const link = linkEl.value.trim();
-          openImageCropper(file, 9 / 16, (croppedDataUrl) => {
+          openImageCropper(file, 16 / 9, (croppedDataUrl) => {
             compressDataUrlImage(croppedDataUrl, 1200, 0.82, 'image/jpeg').then((dataUrl) => {
               homeSliderImages.push({ id: nextSliderImageId++, image: dataUrl, caption, link });
               saveHomeSliderImages();
