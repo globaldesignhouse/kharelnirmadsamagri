@@ -1028,7 +1028,7 @@
 
     <div id="appRoot">
     <div class="top-bar">
-      <div class="brand">🏗️ Kharel Nirmad Samagri Udhyog<div id="liveDateTime" style="font-size:11px; font-weight:400; opacity:0.85; margin-top:2px;"></div></div>
+      <div class="brand" onclick="handleLogoClick()" style="cursor:pointer;" title="">🏗️ Kharel Nirmad Samagri Udhyog<div id="liveDateTime" style="font-size:11px; font-weight:400; opacity:0.85; margin-top:2px;"></div></div>
       <div class="top-actions">
         <span class="user-badge" id="userBadge" style="display:none;" onclick="goToMyAccount()" title="Go to My Account"></span>
         <button class="top-btn" id="businessDateBadge" style="display:none;" onclick="openBusinessDateModal()" title="Click to change the business date"></button>
@@ -10160,6 +10160,92 @@
           renderCategoryManagement();
           alert(`✓ Category deleted with ${itemsToDelete} product(s)`);
         }
+
+        // ===================== Inspect Element blocker =====================
+        // Blocked by default on every page load. Tap the store name/logo in the
+        // top bar 5 times quickly to bring up an Admin-password prompt; entering
+        // the correct password unlocks Inspect Element / right-click for the rest
+        // of this browser tab session (re-locks automatically on refresh).
+        let devToolsBlocked = true;
+        let logoClickCount = 0;
+        let logoClickResetTimer = null;
+
+        function handleLogoClick() {
+          logoClickCount++;
+          clearTimeout(logoClickResetTimer);
+          logoClickResetTimer = setTimeout(() => { logoClickCount = 0; }, 1500);
+          if (logoClickCount >= 5) {
+            logoClickCount = 0;
+            clearTimeout(logoClickResetTimer);
+            openDevToolsUnlockModal();
+          }
+        }
+
+        function openDevToolsUnlockModal() {
+          if (document.getElementById('devToolsUnlockOverlay')) return;
+          const overlay = document.createElement('div');
+          overlay.className = 'modal-overlay';
+          overlay.id = 'devToolsUnlockOverlay';
+          overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+          overlay.innerHTML = `
+            <div class="modal-content" style="max-width:340px; width:90%; padding:20px;">
+              <div class="modal-header">
+                <span>🔒 Unlock Inspect Element</span>
+                <button class="close-modal" onclick="this.closest('.modal-overlay').remove()">×</button>
+              </div>
+              <label style="display:block; margin:12px 0;">
+                <div style="font-weight:600; margin-bottom:5px; color:#333;">Admin Password</div>
+                <input type="password" class="form-input" id="devToolsUnlockPassword" placeholder="Enter Admin password" onkeydown="if(event.key==='Enter') confirmDevToolsUnlock();">
+              </label>
+              <button class="checkout-btn" onclick="confirmDevToolsUnlock()">🔓 Unlock</button>
+            </div>
+          `;
+          document.body.appendChild(overlay);
+          setTimeout(() => document.getElementById('devToolsUnlockPassword')?.focus(), 50);
+        }
+
+        function confirmDevToolsUnlock() {
+          const pwdInput = document.getElementById('devToolsUnlockPassword');
+          const pwd = pwdInput ? pwdInput.value : '';
+          const ok = Object.values(USERS).some(u => u.role === 'admin' && u.password === pwd);
+          if (!ok) { alert('❌ Incorrect Admin password'); return; }
+          devToolsBlocked = false;
+          document.getElementById('devToolsUnlockOverlay')?.remove();
+          showQuickToast('🔓 Inspect Element unlocked for this session', '#1a472a');
+        }
+
+        function showQuickToast(message, bgColor) {
+          document.getElementById('kharelQuickToast')?.remove();
+          const el = document.createElement('div');
+          el.id = 'kharelQuickToast';
+          el.style.cssText = `position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:${bgColor || '#c0392b'};color:#fff;padding:10px 18px;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.25);z-index:99999;font-size:13px;max-width:90vw;text-align:center;`;
+          el.textContent = message;
+          document.body.appendChild(el);
+          setTimeout(() => el.remove(), 2500);
+        }
+
+        document.addEventListener('contextmenu', function (e) {
+          if (devToolsBlocked) {
+            e.preventDefault();
+            showQuickToast('🔒 Right-click is disabled on this site');
+          }
+        });
+
+        document.addEventListener('keydown', function (e) {
+          if (!devToolsBlocked) return;
+          const key = (e.key || '').toUpperCase();
+          const blockedCombo =
+            key === 'F12' ||
+            (e.ctrlKey && e.shiftKey && (key === 'I' || key === 'J' || key === 'C')) ||
+            (e.metaKey && e.altKey && (key === 'I' || key === 'J' || key === 'C')) ||
+            (e.ctrlKey && key === 'U') ||
+            (e.metaKey && key === 'U');
+          if (blockedCombo) {
+            e.preventDefault();
+            e.stopPropagation();
+            showQuickToast('🔒 Inspect Element is disabled. Tap the logo 5 times to unlock.');
+          }
+        });
 
         renderProducts();
         updateBadges();
