@@ -1640,6 +1640,85 @@
         // unless staff explicitly turns this on because the customer asked for a tax invoice.
         let checkoutShowTax = false;
 
+        // ---------- Transport & Discount at Checkout ----------
+        // Edit the transport rates here. fee: null means "enter the amount by hand" (staff only).
+        const TRANSPORT_OPTIONS = [
+          { key: 'pickup',  label: 'Self Pickup',                fee: 0 },
+          { key: 'local',   label: 'Local Delivery',             fee: 500 },
+          { key: 'outside', label: 'Outside Area Delivery',      fee: 1000 },
+          { key: 'custom',  label: 'Custom Amount (staff only)', fee: null }
+        ];
+
+        // Current choices on the checkout screen. cartSig remembers which cart they belong to,
+        // so a new/changed cart starts again with no discount and self pickup.
+        let checkoutAdjust = { cartSig: '', discType: 'none', discValue: 0, transportKey: 'pickup', transportCustom: 0 };
+
+        function resetCheckoutAdjust() {
+          checkoutAdjust = { cartSig: '', discType: 'none', discValue: 0, transportKey: 'pickup', transportCustom: 0 };
+        }
+
+        // Single place where an order's money is worked out:
+        //   Items total - Discount (+ Transport) = Grand total.
+        // Item prices are tax-inclusive, so tax is only *split out of* (items - discount);
+        // transport is added on top and is not taxed.
+        function computeOrderTotals(itemsTotal, discType, discValue, transportFee) {
+          const dv = Math.max(parseFloat(discValue) || 0, 0);
+          let discountAmount = 0;
+          if (discType === 'percent') discountAmount = Math.round(itemsTotal * Math.min(dv, 100) / 100);
+          else if (discType === 'fixed') discountAmount = Math.min(Math.round(dv), itemsTotal);
+          const afterDiscount = itemsTotal - discountAmount;
+          const { subtotal, gst } = splitTaxInclusive(afterDiscount);
+          const transportAmount = Math.max(Math.round(parseFloat(transportFee) || 0), 0);
+          return { itemsTotal, discountAmount, afterDiscount, subtotal, gst, transportAmount, total: afterDiscount + transportAmount };
+        }
+
+        // Re-works an existing order's totals after its items change (Update Bill / partial refund),
+        // keeping the discount rule and transport charge it was created with.
+        function recomputeOrderTotals(order) {
+          const itemsTotal = order.items.reduce((sum, item) => sum + item.qty * item.price, 0);
+          const t = computeOrderTotals(itemsTotal, order.discountType || 'none', order.discountValue || 0, order.transportAmount || 0);
+          order.itemsTotal = itemsTotal;
+          order.discountAmount = t.discountAmount;
+          order.subtotal = t.subtotal;
+          order.gst = t.gst;
+          order.total = t.total;
+        }
+
+        // How much the customer actually gets back for a partial refund. When the order had a
+        // discount, the refunded items are only worth their share of what was really paid.
+        function calcPartialRefund(order, qtyMap) {
+          const gross = order.items.reduce((sum, item) => sum + (qtyMap[item.id] || 0) * item.price, 0);
+          if (!(order.discountAmount > 0) || !order.itemsTotal) return { amount: gross, newDiscountValue: order.discountValue };
+          const remaining = order.items.reduce((sum, item) => sum + (item.qty - (qtyMap[item.id] || 0)) * item.price, 0);
+          let dv = order.discountValue || 0;
+          if (order.discountType === 'fixed') dv = Math.round(dv * remaining / order.itemsTotal);
+          const t = computeOrderTotals(remaining, order.discountType, dv, 0);
+          return { amount: (order.itemsTotal - order.discountAmount) - t.afterDiscount, newDiscountValue: dv };
+        }
+
+        function taxPercentLabel() {
+          return (TAX_RATE * 100).toFixed(TAX_RATE * 100 % 1 === 0 ? 0 : 1);
+        }
+
+        function formatSummaryValue(v) {
+          return (v < 0 ? '- ' : '') + 'Rs ' + Math.abs(v).toLocaleString();
+        }
+
+        // The extra lines shown above the Grand Total on invoice / receipt / text bill.
+        function getOrderSummaryLines(order) {
+          const disc = order.discountAmount || 0;
+          const trans = order.transportAmount || 0;
+          const lines = [];
+          if (disc > 0 || trans > 0) lines.push({ label: 'Items Total', value: order.itemsTotal });
+          if (disc > 0) lines.push({ label: 'Discount' + (order.discountType === 'percent' ? ` (${order.discountValue}%)` : ''), value: -disc, discount: true });
+          if (order.showTax) {
+            lines.push({ label: 'Subtotal', value: order.subtotal });
+            lines.push({ label: `Tax (${taxPercentLabel()}%)`, value: order.gst });
+          }
+          if (trans > 0) lines.push({ label: 'Transport' + (order.transportLabel ? ` (${order.transportLabel})` : ''), value: trans });
+          return lines;
+        }
+
         let cart = [];
         let orders = JSON.parse(localStorage.getItem('kharel_orders')) || [];
         let wastageRecords = JSON.parse(localStorage.getItem('kharel_wastage')) || [];
@@ -3188,35 +3267,86 @@
 
         // Prices are tax-inclusive to the customer, so by default we only show the Total.
         // The tax breakdown only appears when staff turns it on (customer asked for a tax invoice).
-        function renderCheckoutSummaryHtml(total, gst, grandTotal, showTax) {
-          if (showTax) {
-            return `
-              <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                <span>Subtotal:</span>
-                <span>Rs ${total.toLocaleString()}</span>
-              </div>
-              <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                <span>Tax (${(TAX_RATE * 100).toFixed(TAX_RATE * 100 % 1 === 0 ? 0 : 1)}%):</span>
-                <span>Rs ${gst.toLocaleString()}</span>
-              </div>
-              <div style="border-top: 1px solid #ddd; padding-top: 8px; display: flex; justify-content: space-between; font-weight: 700; font-size: 16px; color: #2d6d48;">
-                <span>Total:</span>
-                <span>Rs ${grandTotal.toLocaleString()}</span>
-              </div>
-            `;
-          }
-          return `
-            <div style="display: flex; justify-content: space-between; font-weight: 700; font-size: 16px; color: #2d6d48;">
-              <span>Total:</span>
-              <span>Rs ${grandTotal.toLocaleString()}</span>
-            </div>
-          `;
+        function getCheckoutTotals() {
+          const itemsTotal = cart.reduce((sum, item) => sum + item.qty * item.price, 0);
+          let opt = TRANSPORT_OPTIONS.find(o => o.key === checkoutAdjust.transportKey) || TRANSPORT_OPTIONS[0];
+          if (opt.fee === null && !isStaff()) opt = TRANSPORT_OPTIONS[0]; // custom amount is staff only
+          const fee = opt.fee === null ? checkoutAdjust.transportCustom : opt.fee;
+          // Manual discounts are a staff tool - a customer placing their own order cannot give themselves one.
+          const discType = isStaff() ? checkoutAdjust.discType : 'none';
+          const t = computeOrderTotals(itemsTotal, discType, checkoutAdjust.discValue, fee);
+          t.discType = discType;
+          t.discValue = discType === 'percent' ? Math.min(Math.max(parseFloat(checkoutAdjust.discValue) || 0, 0), 100)
+                      : discType === 'fixed' ? t.discountAmount : 0;
+          t.transportLabel = opt.label.replace(' (staff only)', '');
+          return t;
         }
 
-        function toggleCheckoutTax(checked, total, gst, grandTotal) {
-          checkoutShowTax = checked;
+        // Prices are tax-inclusive, so by default we only show the Total.
+        // The tax breakdown only appears when staff turns it on (customer asked for a tax invoice).
+        function renderCheckoutSummaryHtml(t, showTax) {
+          const row = (label, value, style) => `
+            <div style="display: flex; justify-content: space-between; margin-bottom: 8px; ${style || ''}">
+              <span>${label}</span><span>${value}</span>
+            </div>`;
+          const hasAdj = t.discountAmount > 0 || t.transportAmount > 0;
+          let h = '';
+          if (hasAdj) h += row('Items Total:', `Rs ${t.itemsTotal.toLocaleString()}`);
+          if (t.discountAmount > 0) h += row(`Discount${t.discType === 'percent' ? ` (${t.discValue}%)` : ''}:`, `- Rs ${t.discountAmount.toLocaleString()}`, 'color: #c0392b;');
+          if (showTax) {
+            h += row('Subtotal:', `Rs ${t.subtotal.toLocaleString()}`);
+            h += row(`Tax (${taxPercentLabel()}%):`, `Rs ${t.gst.toLocaleString()}`);
+          }
+          if (t.transportAmount > 0) h += row(`Transport (${escapeHtml(t.transportLabel)}):`, `+ Rs ${t.transportAmount.toLocaleString()}`);
+          const totalStyle = (hasAdj || showTax) ? 'border-top: 1px solid #ddd; padding-top: 8px; ' : '';
+          h += `
+            <div style="${totalStyle}display: flex; justify-content: space-between; font-weight: 700; font-size: 16px; color: #2d6d48;">
+              <span>Total:</span>
+              <span>Rs ${t.total.toLocaleString()}</span>
+            </div>`;
+          return h;
+        }
+
+        // Repaints the summary box (and the small "capped" warning) from the current choices.
+        function updateCheckoutSummary() {
+          const t = getCheckoutTotals();
           const box = document.getElementById('checkoutSummaryBox');
-          if (box) box.innerHTML = renderCheckoutSummaryHtml(total, gst, grandTotal, checked);
+          if (box) box.innerHTML = renderCheckoutSummaryHtml(t, checkoutShowTax);
+          const warn = document.getElementById('checkoutDiscWarn');
+          if (warn) {
+            const raw = parseFloat(checkoutAdjust.discValue) || 0;
+            let msg = '';
+            if (t.discType === 'percent' && raw > 100) msg = 'Discount capped at 100%.';
+            if (t.discType === 'fixed' && raw > t.itemsTotal) msg = `Discount capped at the items total (Rs ${t.itemsTotal.toLocaleString()}).`;
+            warn.textContent = msg;
+          }
+        }
+
+        // Runs whenever the customer/staff changes the transport or discount controls.
+        function onCheckoutAdjustChange() {
+          const tSel = document.getElementById('checkoutTransport');
+          if (tSel) checkoutAdjust.transportKey = tSel.value;
+          const tCustom = document.getElementById('checkoutTransportCustom');
+          if (tCustom) checkoutAdjust.transportCustom = parseFloat(tCustom.value) || 0;
+          const customRow = document.getElementById('checkoutTransportCustomRow');
+          if (customRow) customRow.style.display = checkoutAdjust.transportKey === 'custom' ? 'block' : 'none';
+
+          const dSel = document.getElementById('checkoutDiscType');
+          if (dSel) checkoutAdjust.discType = dSel.value;
+          const dVal = document.getElementById('checkoutDiscValue');
+          if (dVal) checkoutAdjust.discValue = parseFloat(dVal.value) || 0;
+          const dRow = document.getElementById('checkoutDiscValueRow');
+          if (dRow) {
+            dRow.style.display = checkoutAdjust.discType === 'none' ? 'none' : 'block';
+            const lbl = document.getElementById('checkoutDiscValueLabel');
+            if (lbl) lbl.textContent = checkoutAdjust.discType === 'percent' ? 'Discount percentage (%)' : 'Discount amount (Rs)';
+          }
+          updateCheckoutSummary();
+        }
+
+        function toggleCheckoutTax(checked) {
+          checkoutShowTax = checked;
+          updateCheckoutSummary();
         }
 
         function renderCheckout() {
@@ -3236,10 +3366,18 @@
             return;
           }
 
-          // Prices are tax-inclusive - the customer always pays exactly this total, tax shown or not.
-          const grandTotal = cart.reduce((sum, item) => sum + item.qty * item.price, 0);
-          const { subtotal, gst } = splitTaxInclusive(grandTotal);
+          // A different cart means a new order: start again with no discount and self pickup.
+          const cartSig = cart.map(i => i.id + ':' + i.qty).join('|');
+          if (checkoutAdjust.cartSig !== cartSig) {
+            resetCheckoutAdjust();
+            checkoutAdjust.cartSig = cartSig;
+          }
           checkoutShowTax = false; // reset for each new checkout - tax breakdown is hidden unless staff turns it on below
+          const totals = getCheckoutTotals();
+          const transportOptionsHtml = TRANSPORT_OPTIONS
+            .filter(o => o.fee !== null || isStaff())
+            .map(o => `<option value="${o.key}" ${checkoutAdjust.transportKey === o.key ? 'selected' : ''}>${o.fee === null ? o.label : `${o.label} - ${o.fee === 0 ? 'Free' : 'Rs ' + o.fee.toLocaleString()}`}</option>`)
+            .join('');
 
           const stockWarnings = cart.filter(item => {
             const product = products.find(p => p.id === item.id);
@@ -3254,12 +3392,36 @@
           const html = `
             <h2 style="margin-bottom: 15px; color: #1a472a;">Order Details</h2>
             ${stockWarningHtml}
+
+            <div style="background: white; border: 1px solid #e3e3e3; border-radius: 8px; padding: 14px; margin-bottom: 12px;">
+              <label style="display: block; font-weight: 600; margin-bottom: 6px;">🚚 Transport</label>
+              <select class="form-input" id="checkoutTransport" onchange="onCheckoutAdjustChange()">
+                ${transportOptionsHtml}
+              </select>
+              <div id="checkoutTransportCustomRow" style="margin-top: 8px; display: ${checkoutAdjust.transportKey === 'custom' && isStaff() ? 'block' : 'none'};">
+                <input type="number" class="form-input" id="checkoutTransportCustom" min="0" step="1" placeholder="Transport charge (Rs)" value="${checkoutAdjust.transportCustom || ''}" oninput="onCheckoutAdjustChange()">
+              </div>
+              ${isStaff() ? `
+              <label style="display: block; font-weight: 600; margin: 14px 0 6px;">🏷️ Discount</label>
+              <select class="form-input" id="checkoutDiscType" onchange="onCheckoutAdjustChange()">
+                <option value="none" ${checkoutAdjust.discType === 'none' ? 'selected' : ''}>No discount</option>
+                <option value="percent" ${checkoutAdjust.discType === 'percent' ? 'selected' : ''}>Percentage (%)</option>
+                <option value="fixed" ${checkoutAdjust.discType === 'fixed' ? 'selected' : ''}>Fixed amount (Rs)</option>
+              </select>
+              <div id="checkoutDiscValueRow" style="margin-top: 8px; display: ${checkoutAdjust.discType === 'none' ? 'none' : 'block'};">
+                <label id="checkoutDiscValueLabel" style="display: block; font-size: 12px; color: #666; margin-bottom: 4px;">${checkoutAdjust.discType === 'percent' ? 'Discount percentage (%)' : 'Discount amount (Rs)'}</label>
+                <input type="number" class="form-input" id="checkoutDiscValue" min="0" step="any" placeholder="0" value="${checkoutAdjust.discValue || ''}" oninput="onCheckoutAdjustChange()">
+                <div id="checkoutDiscWarn" style="font-size: 12px; color: #c0392b; margin-top: 4px;"></div>
+              </div>
+              ` : ''}
+            </div>
+
             <div id="checkoutSummaryBox" style="background: #f9f9f9; padding: 15px; border-radius: 8px; margin-bottom: 10px;">
-              ${renderCheckoutSummaryHtml(subtotal, gst, grandTotal, checkoutShowTax)}
+              ${renderCheckoutSummaryHtml(totals, checkoutShowTax)}
             </div>
             ${isStaff() ? `
             <label style="display:flex; align-items:center; gap:8px; font-size:13px; color:#555; margin-bottom:20px; cursor:pointer;">
-              <input type="checkbox" id="showTaxCheckbox" onchange="toggleCheckoutTax(this.checked, ${subtotal}, ${gst}, ${grandTotal})">
+              <input type="checkbox" id="showTaxCheckbox" onchange="toggleCheckoutTax(this.checked)">
               🧾 Customer wants a tax invoice (show how much tax is included in the price)
             </label>
             ` : `<div style="margin-bottom:20px;"></div>`}
@@ -3378,18 +3540,23 @@
             return;
           }
 
-          // Prices are tax-inclusive - the customer pays exactly this total whether tax is shown or not.
-          const grandTotal = cart.reduce((sum, item) => sum + item.qty * item.price, 0);
-          const { subtotal, gst } = splitTaxInclusive(grandTotal);
+          // Items total - discount + transport = what the customer pays (see computeOrderTotals).
+          const t = getCheckoutTotals();
 
           currentOrder = {
             id: 'ORD-' + Date.now(),
             name, phone, location, notes,
             countryCode,
             items: cart.slice(),
-            subtotal,
-            gst,
-            total: grandTotal,
+            itemsTotal: t.itemsTotal,
+            discountType: t.discType,
+            discountValue: t.discValue,
+            discountAmount: t.discountAmount,
+            transportLabel: t.transportAmount > 0 ? t.transportLabel : '',
+            transportAmount: t.transportAmount,
+            subtotal: t.subtotal,
+            gst: t.gst,
+            total: t.total,
             showTax: checkoutShowTax,
             paymentMethod: selectedPayment,
             date: workingDateLocaleString(),
@@ -3645,6 +3812,7 @@
           renderProducts();
 
           cart = [];
+          resetCheckoutAdjust();
           updateBadges();
 
           showInvoice();
@@ -3757,6 +3925,7 @@
           renderProducts();
 
           cart = [];
+          resetCheckoutAdjust();
           updateBadges();
 
           showInvoice();
@@ -3843,16 +4012,12 @@
               </table>
 
               <div class="invoice-summary">
-                ${order.showTax ? `
-                <div class="summary-row">
-                  <span>Subtotal:</span>
-                  <span>Rs ${order.subtotal.toLocaleString()}</span>
+                ${getOrderSummaryLines(order).map(l => `
+                <div class="summary-row"${l.discount ? ' style="color: #c0392b;"' : ''}>
+                  <span>${escapeHtml(l.label)}:</span>
+                  <span>${formatSummaryValue(l.value)}</span>
                 </div>
-                <div class="summary-row">
-                  <span>Tax (${(TAX_RATE * 100).toFixed(TAX_RATE * 100 % 1 === 0 ? 0 : 1)}%):</span>
-                  <span>Rs ${order.gst.toLocaleString()}</span>
-                </div>
-                ` : ''}
+                `).join('')}
                 <div class="summary-total">
                   <div style="display: flex; justify-content: space-between;">
                     <span>Grand Total:</span>
@@ -3954,10 +4119,7 @@
               <div class="r-hr"></div>
               ${itemsHtml}
               <div class="r-hr"></div>
-              ${order.showTax ? `
-              <div class="r-item-line"><span>Subtotal</span><span>Rs ${order.subtotal.toLocaleString()}</span></div>
-              <div class="r-item-line"><span>Tax (${(TAX_RATE * 100).toFixed(TAX_RATE * 100 % 1 === 0 ? 0 : 1)}%)</span><span>Rs ${order.gst.toLocaleString()}</span></div>
-              ` : ''}
+              ${getOrderSummaryLines(order).map(l => `<div class="r-item-line"><span>${escapeHtml(l.label)}</span><span>${formatSummaryValue(l.value)}</span></div>`).join('')}
               <div class="r-item-line r-bold r-big"><span>TOTAL</span><span>Rs ${order.total.toLocaleString()}</span></div>
               ${refundsHtml}
               <div class="r-hr"></div>
@@ -4002,10 +4164,9 @@
             text += `${item.name.padEnd(20)} ${item.qty} x Rs${item.price} = Rs${total}\n`;
           });
           text += '--------------------------------\n';
-          if (order.showTax) {
-            text += `Subtotal: Rs ${order.subtotal}\n`;
-            text += `Tax (${(TAX_RATE * 100).toFixed(TAX_RATE * 100 % 1 === 0 ? 0 : 1)}%): Rs ${order.gst}\n`;
-          }
+          getOrderSummaryLines(order).forEach(l => {
+            text += `${l.label}: ${formatSummaryValue(l.value)}\n`;
+          });
           text += `TOTAL: Rs ${order.total}\n`;
           if (!order.paid) {
             text += `AMOUNT DUE (UDHAR): Rs ${order.total}\n`;
@@ -5195,32 +5356,7 @@
           });
 
           html += `<p style="font-size:11px;color:#888;">Generated ${new Date().toLocaleString()} by ${escapeHtml(currentUser.username)} (${escapeHtml(currentUser.label)})</p>`;
-          html += `
-        // ============================================================
-        // ONE-TIME MIGRATION: Convert plain text passwords to hashed
-        // ============================================================
-        async function migratePasswordsToHashed() {
-          console.log('🔄 Starting password migration...');
-          const oldUsers = USERS;
-          
-          for (const [username, user] of Object.entries(oldUsers)) {
-            if (user.password && !user.password.startsWith('$2a') && !user.password.startsWith('$2b') && !user.password.startsWith('$2y')) {
-              // Plain text password found - hash it
-              const hashed = await hashPassword(user.password);
-              if (hashed) {
-                USERS[username].password = hashed;
-                console.log(`✅ Hashed: ${username}`);
-              }
-            }
-          }
-          
-          // Save encrypted
-          saveUsers();
-          console.log('✅ Migration complete! All passwords are now hashed and encrypted.');
-          alert('✅ Password migration complete! All passwords are now secure.');
-        }
-
-</body></html>`;
+          html += `</body></html>`;
 
           const blob = new Blob(['\ufeff', html], { type: 'application/msword' });
           const link = document.createElement('a');
@@ -9003,12 +9139,8 @@
           adjustStockForBillChange(originalItems, order.items);
           renderProducts();
 
-          // Prices are tax-inclusive - the item total IS what the customer pays, tax is not added on top.
-          const orderTotal = order.items.reduce((sum, item) => sum + item.qty * item.price, 0);
-          const { subtotal, gst } = splitTaxInclusive(orderTotal);
-          order.subtotal = subtotal;
-          order.gst = gst;
-          order.total = orderTotal;
+          // Items total - discount + transport (the bill keeps the discount/transport it was created with).
+          recomputeOrderTotals(order);
 
           const wasPaid = order.paid;
           const nowPaid = isSettle ? true : (document.getElementById('editPaidStatus').value === 'true');
@@ -9240,8 +9372,8 @@
         function updateRefundTotalDisplay() {
           const order = orders.find(o => o.id === refundingOrderId);
           if (!order) return;
-          // Prices are tax-inclusive, so the refund amount is simply what the customer paid for those items.
-          const refundGrand = order.items.reduce((sum, item) => sum + (refundPartialQty[item.id] || 0) * item.price, 0);
+          // Refund = what the customer actually paid for those items (after any discount).
+          const refundGrand = calcPartialRefund(order, refundPartialQty).amount;
           const el = document.getElementById('refundTotalDisplay');
           if (el) el.textContent = `Refund Amount: Rs ${refundGrand.toLocaleString()}`;
         }
@@ -9267,6 +9399,11 @@
 
           const reason = (prompt('Reason for refund (optional):') || '').trim();
 
+          // With a discount on the bill, the refund is the discounted value of those items.
+          const partialCalc = calcPartialRefund(order, refundPartialQty);
+          refundAmount = partialCalc.amount;
+          order.discountValue = partialCalc.newDiscountValue;
+
           order.items = order.items.map(item => ({ ...item, qty: item.qty - (refundPartialQty[item.id] || 0) }))
                                     .filter(item => item.qty > 0);
 
@@ -9277,11 +9414,7 @@
             order.status = 'refunded';
           } else {
             order.partiallyRefunded = true;
-            const orderTotal = order.items.reduce((sum, item) => sum + item.qty * item.price, 0);
-            const { subtotal, gst } = splitTaxInclusive(orderTotal);
-            order.subtotal = subtotal;
-            order.gst = gst;
-            order.total = orderTotal;
+            recomputeOrderTotals(order);
           }
 
           order.revision = (order.revision || 1) + 1;
