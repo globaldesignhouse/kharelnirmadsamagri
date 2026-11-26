@@ -1608,6 +1608,26 @@
         // so a new/changed cart starts again with no discount and self pickup.
         let checkoutAdjust = { cartSig: '', discType: 'none', discValue: 0, transportKey: 'pickup', transportCustom: 0, transportCost: 0 };
 
+        // What the customer typed in "Customer Information". Kept in memory so that going
+        // Back from the payment screen (to change payment method etc.) or switching tabs does
+        // not wipe the form. Cleared only once the order is completed.
+        let checkoutCustomer = { name: '', phone: '', countryCode: '977', countryCustom: '', location: '', notes: '' };
+
+        function resetCheckoutCustomer() {
+          checkoutCustomer = { name: '', phone: '', countryCode: '977', countryCustom: '', location: '', notes: '' };
+        }
+
+        function saveCheckoutCustomerDraft() {
+          const val = (id) => { const el = document.getElementById(id); return el ? el.value : null; };
+          const set = (key, v) => { if (v !== null) checkoutCustomer[key] = v; };
+          set('name', val('orderName'));
+          set('phone', val('orderPhone'));
+          set('countryCode', val('orderCountryCode'));
+          set('countryCustom', val('orderCountryCodeCustom'));
+          set('location', val('orderLocation'));
+          set('notes', val('orderNotes'));
+        }
+
         function resetCheckoutAdjust() {
           checkoutAdjust = { cartSig: '', discType: 'none', discValue: 0, transportKey: 'pickup', transportCustom: 0, transportCost: 0 };
         }
@@ -2357,6 +2377,25 @@
           const mainTotal = rows.filter(r => r.group === 'main').reduce((s, r) => s + r.bytes, 0);
           const mediaTotal = rows.filter(r => r.group === 'media').reduce((s, r) => s + r.bytes, 0);
 
+          // PDFs can't be shrunk by "Optimize All Images" - list every PDF so it's clear which
+          // ones are using space (certificates, leave proofs, staff ID files).
+          const isPdfItem = (it) => it && typeof it.fileData === 'string' && it.fileData.startsWith('data:application/pdf');
+          const pdfRows = [];
+          certificates.forEach(c => { if (isPdfItem(c)) pdfRows.push({ where: 'Certificate', who: c.username, name: c.title || c.fileName, bytes: c.fileData.length }); });
+          leaveRequests.forEach(r => { if (isPdfItem(r)) pdfRows.push({ where: 'Leave request', who: r.username, name: r.fileName, bytes: r.fileData.length }); });
+          Object.keys(USERS).forEach(un => { const a = USERS[un] && USERS[un].idAttachment; if (isPdfItem(a)) pdfRows.push({ where: 'ID file', who: un, name: a.fileName, bytes: a.fileData.length }); });
+          pdfRows.sort((x, y) => y.bytes - x.bytes);
+          const pdfTotal = pdfRows.reduce((sum, r) => sum + r.bytes, 0);
+          const pdfSectionHtml = `
+            <h4 style="margin:14px 0 6px; font-size:13px; color:#1a472a;">📄 PDF files (cannot be compressed)${pdfRows.length ? ` - ${pdfRows.length} file(s), ${Math.round(pdfTotal / 1024)}KB` : ''}</h4>
+            ${pdfRows.length ? pdfRows.map(r => `
+              <div style="display:flex; justify-content:space-between; gap:8px; padding:5px 0; border-bottom:1px solid #eee; font-size:12px;">
+                <span>${escapeHtml(r.where)} - ${escapeHtml(r.who || '')}: ${escapeHtml(r.name || 'file')}</span>
+                <strong style="color:${r.bytes > 100000 ? '#c0392b' : '#333'}; white-space:nowrap;">${Math.round(r.bytes / 1024)}KB</strong>
+              </div>
+            `).join('') + `<p style="font-size:12px; color:#888; margin-top:6px;">To free this space, delete the PDF and upload a JPEG photo of the same document instead - JPEGs get compressed automatically.</p>` : `<p style="font-size:12px; color:#888;">No PDF files found. ✓</p>`}
+          `;
+
           const existing = document.getElementById('storageBreakdownOverlay');
           if (existing) existing.remove();
           const overlay = document.createElement('div');
@@ -2383,6 +2422,7 @@
                   </div>
                 `).join('')}
               </div>
+              ${pdfSectionHtml}
               <p style="font-size:12px; color:#888; margin-top:12px;">Data now syncs as two separate parts (Main and Images), each with its own ~900KB budget. Whichever part shows "OVER" above is blocking sync - if it's Images, use "Optimize All Images"; if it's Main and Certificates/Leave requests are large, check for PDF attachments (can't be auto-compressed).</p>
             </div>
           `;
@@ -3365,8 +3405,8 @@
           if (checkoutAdjust.cartSig !== cartSig) {
             resetCheckoutAdjust();
             checkoutAdjust.cartSig = cartSig;
+            checkoutShowTax = false; // new cart = new checkout - tax breakdown is hidden unless staff turns it on below
           }
-          checkoutShowTax = false; // reset for each new checkout - tax breakdown is hidden unless staff turns it on below
           const totals = getCheckoutTotals();
           const transportOptionsHtml = TRANSPORT_OPTIONS
             .map(o => `<option value="${o.key}" ${checkoutAdjust.transportKey === o.key ? 'selected' : ''}>${o.fee === null ? o.label : `${o.label} - ${o.fee === 0 ? 'Free' : 'Rs ' + o.fee.toLocaleString()}`}</option>`)
@@ -3417,7 +3457,7 @@
             </div>
             ${isStaff() ? `
             <label style="display:flex; align-items:center; gap:8px; font-size:13px; color:#555; margin-bottom:20px; cursor:pointer;">
-              <input type="checkbox" id="showTaxCheckbox" onchange="toggleCheckoutTax(this.checked)">
+              <input type="checkbox" id="showTaxCheckbox" ${checkoutShowTax ? 'checked' : ''} onchange="toggleCheckoutTax(this.checked)">
               🧾 Customer wants a tax invoice (show how much tax is included in the price)
             </label>
             ` : `<div style="margin-bottom:20px;"></div>`}
@@ -3425,54 +3465,54 @@
             <h3 style="margin: 20px 0 12px; color: #1a472a; font-size: 14px;">Customer Information</h3>
             <div style="margin-bottom: 15px;">
               <label style="display: block; font-weight: 600; margin-bottom: 6px;">Full Name *</label>
-              <input type="text" class="form-input" id="orderName" placeholder="Your name">
+              <input type="text" class="form-input" id="orderName" placeholder="Your name" value="${escapeAttr(checkoutCustomer.name)}">
             </div>
             <div style="margin-bottom: 15px;">
               <label style="display: block; font-weight: 600; margin-bottom: 6px;">Phone Number *</label>
               <div style="display:flex; gap:8px; flex-wrap:wrap;">
                 <select class="form-input" id="orderCountryCode" style="max-width:190px; flex:1 1 150px;" onchange="onOrderCountryCodeChange()">
-                  ${countryCodeOptionsHtml('977')}
+                  ${countryCodeOptionsHtml(checkoutCustomer.countryCode || '977')}
                 </select>
-                <input type="tel" class="form-input" id="orderPhone" placeholder="9841234567" style="flex:2 1 160px;">
+                <input type="tel" class="form-input" id="orderPhone" placeholder="9841234567" style="flex:2 1 160px;" value="${escapeAttr(checkoutCustomer.phone)}">
               </div>
-              <input type="text" class="form-input" id="orderCountryCodeCustom" placeholder="Enter your country code, e.g. 33 for France" style="margin-top:8px; display:none;">
+              <input type="text" class="form-input" id="orderCountryCodeCustom" placeholder="Enter your country code, e.g. 33 for France" style="margin-top:8px; display:${checkoutCustomer.countryCode === 'other' ? 'block' : 'none'};" value="${escapeAttr(checkoutCustomer.countryCustom)}">
             </div>
             <div style="margin-bottom: 15px;">
               <label style="display: block; font-weight: 600; margin-bottom: 6px;">Address *</label>
-              <input type="text" class="form-input" id="orderLocation" placeholder="Delivery address">
+              <input type="text" class="form-input" id="orderLocation" placeholder="Delivery address" value="${escapeAttr(checkoutCustomer.location)}">
             </div>
             <div style="margin-bottom: 15px;">
               <label style="display: block; font-weight: 600; margin-bottom: 6px;">Special Instructions</label>
-              <textarea class="form-input" id="orderNotes" placeholder="Any notes?" rows="3" style="resize: vertical;"></textarea>
+              <textarea class="form-input" id="orderNotes" placeholder="Any notes?" rows="3" style="resize: vertical;">${escapeHtml(checkoutCustomer.notes)}</textarea>
             </div>
 
             <h3 style="margin: 20px 0 12px; color: #1a472a; font-size: 14px;">Select Payment Method</h3>
             <div class="payment-grid">
-              <div class="payment-card selected" onclick="selectPayment('cash', this)">
+              <div class="payment-card ${selectedPayment === 'cash' ? 'selected' : ''}" onclick="selectPayment('cash', this)">
                 <div class="payment-icon">💵</div>
                 <div class="payment-name">Cash on Delivery</div>
               </div>
-              <div class="payment-card" onclick="selectPayment('debit', this)">
+              <div class="payment-card ${selectedPayment === 'debit' ? 'selected' : ''}" onclick="selectPayment('debit', this)">
                 <div class="payment-icon">💳</div>
                 <div class="payment-name">Debit Card</div>
               </div>
-              <div class="payment-card" onclick="selectPayment('credit', this)">
+              <div class="payment-card ${selectedPayment === 'credit' ? 'selected' : ''}" onclick="selectPayment('credit', this)">
                 <div class="payment-icon">💳</div>
                 <div class="payment-name">Credit Card</div>
               </div>
-              <div class="payment-card" onclick="selectPayment('bank', this)">
+              <div class="payment-card ${selectedPayment === 'bank' ? 'selected' : ''}" onclick="selectPayment('bank', this)">
                 <div class="payment-icon">🏦</div>
                 <div class="payment-name">Bank Transfer</div>
               </div>
-              <div class="payment-card" onclick="selectPayment('split', this)">
+              <div class="payment-card ${selectedPayment === 'split' ? 'selected' : ''}" onclick="selectPayment('split', this)">
                 <div class="payment-icon">🔀</div>
                 <div class="payment-name">Split Payment</div>
               </div>
-              <div class="payment-card" onclick="selectPayment('wallet', this)">
+              <div class="payment-card ${selectedPayment === 'wallet' ? 'selected' : ''}" onclick="selectPayment('wallet', this)">
                 <div class="payment-icon">📱</div>
                 <div class="payment-name">Digital Wallet</div>
               </div>
-              <div class="payment-card" onclick="selectPayment('udhar', this)">
+              <div class="payment-card ${selectedPayment === 'udhar' ? 'selected' : ''}" onclick="selectPayment('udhar', this)">
                 <div class="payment-icon">🤝</div>
                 <div class="payment-name">Udhar (Pay Later)</div>
               </div>
@@ -3485,6 +3525,14 @@
           `;
 
           document.getElementById('checkoutContent').innerHTML = html;
+
+          // Remember what is typed so Back / tab switches never lose it.
+          ['orderName', 'orderPhone', 'orderLocation', 'orderNotes', 'orderCountryCodeCustom'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.addEventListener('input', saveCheckoutCustomerDraft);
+          });
+          const ccEl = document.getElementById('orderCountryCode');
+          if (ccEl) ccEl.addEventListener('change', saveCheckoutCustomerDraft);
         }
 
         function selectPayment(method, element) {
@@ -3505,6 +3553,7 @@
             alert(`🔒 Store is closed for ${workingDate} (End of Day already done for this business date). Please ask Admin to reopen the store for this date, switch the business date, or come back tomorrow.`);
             return;
           }
+          saveCheckoutCustomerDraft(); // keep what was typed even if validation below stops us
           const name = document.getElementById('orderName').value.trim();
           const phone = document.getElementById('orderPhone').value.trim();
           const location = document.getElementById('orderLocation').value.trim();
@@ -3810,6 +3859,7 @@
 
           cart = [];
           resetCheckoutAdjust();
+          resetCheckoutCustomer();
           updateBadges();
 
           showInvoice();
@@ -3923,6 +3973,7 @@
 
           cart = [];
           resetCheckoutAdjust();
+          resetCheckoutCustomer();
           updateBadges();
 
           showInvoice();
