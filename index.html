@@ -3832,7 +3832,7 @@
           currentOrder.walletProvider = w ? w.name : 'Digital Wallet';
           currentOrder.walletTxnId = walletTxnId;
 
-          completePayment();
+          submitQRPayment();
         }
 
         function processBankPayment() {
@@ -3842,7 +3842,7 @@
           currentOrder.paymentMethod = 'bank';
           currentOrder.bankTxnId = bankTxnId;
 
-          completePayment();
+          submitQRPayment();
         }
 
         function completeUdharOrder() {
@@ -3979,6 +3979,92 @@
           showInvoice();
         }
 
+        // ---------- QR payment verification (customer self-orders) ----------
+        // A customer cannot confirm their own QR payment: the order is saved as
+        // "pending_verification" and only becomes PAID once staff with Orders access has
+        // checked their eSewa/Khalti/bank SMS and tapped "Confirm Payment".
+        // Staff placing the order themselves (customer standing at the counter) stays instant.
+        function qrState(o) {
+          if (!o || o.paid || o.refunded) return null;
+          if (o.status === 'pending_verification') return 'pending';
+          if (o.status === 'rejected') return 'rejected';
+          return null;
+        }
+        function pendingVerificationCount() {
+          return orders.filter(o => !o.deleted && qrState(o) === 'pending').length;
+        }
+
+        function submitQRPayment() {
+          if (isStaff()) { completePayment(); return; }
+
+          currentOrder.paid = false;
+          currentOrder.status = 'pending_verification';
+          currentOrder.dueAmount = currentOrder.total;
+          currentOrder.submittedAt = workingDateLocaleString();
+
+          orders.push(currentOrder);
+          localStorage.setItem('kharel_orders', JSON.stringify(orders));
+          addMyOrderId(currentOrder.id);
+          // Stock is held for the order now; it is put back if the payment is rejected.
+          decrementStockForItems(currentOrder.items, 'Sale (awaiting payment verification)');
+          renderProducts();
+
+          cart = [];
+          resetCheckoutAdjust();
+          resetCheckoutCustomer();
+          updateBadges();
+
+          showInvoice();
+        }
+
+        function confirmQRPayment(orderId) {
+          if (!canAccess('orders')) { alert('You do not have access to verify payments. Ask Admin to grant you Orders access.'); return; }
+          const order = orders.find(o => o.id === orderId && !o.deleted);
+          if (!order || qrState(order) !== 'pending') return;
+
+          const txn = order.walletTxnId || order.bankTxnId || '-';
+          if (!confirm(`Confirm payment received?\n\nCustomer: ${order.name}\nAmount: Rs ${order.total.toLocaleString()}\nMethod: ${formatPaymentMethod(order)}\nTxn ID: ${txn}\n\nOnly confirm after you have seen this amount arrive in your eSewa/Khalti/bank account.`)) return;
+
+          order.paid = true;
+          order.status = 'paid';
+          order.dueAmount = 0;
+          order.paidDate = workingDateLocaleString();
+          order.paidBy = currentUser.username;
+          order.verifiedBy = currentUser.username;
+          order.verifiedAt = new Date().toLocaleString();
+          if (!order.invoiceNumber) order.invoiceNumber = generateInvoiceNumber();
+
+          localStorage.setItem('kharel_orders', JSON.stringify(orders));
+          updateBadges();
+          alert('✓ Payment confirmed. Order is now PAID.');
+          if (document.getElementById('ordersContent')) renderOrders();
+          if (typeof renderAdmin === 'function' && isAdmin()) { try { renderAdmin(); } catch (e) {} }
+        }
+
+        function rejectQRPayment(orderId) {
+          if (!canAccess('orders')) { alert('You do not have access to verify payments. Ask Admin to grant you Orders access.'); return; }
+          const order = orders.find(o => o.id === orderId && !o.deleted);
+          if (!order || qrState(order) !== 'pending') return;
+
+          const reason = prompt(`Reject this payment? The order will NOT be marked paid and its stock will be put back.\n\nReason (e.g. "Payment not received"):`, 'Payment not received');
+          if (reason === null) return;
+
+          order.status = 'rejected';
+          order.paid = false;
+          order.dueAmount = 0;
+          order.rejectedBy = currentUser.username;
+          order.rejectedAt = new Date().toLocaleString();
+          order.rejectReason = reason.trim() || 'Payment not received';
+          restockForItems(order.items, 'Restock (Payment Rejected)');
+
+          localStorage.setItem('kharel_orders', JSON.stringify(orders));
+          renderProducts();
+          updateBadges();
+          alert('Payment rejected. Stock has been restored.');
+          if (document.getElementById('ordersContent')) renderOrders();
+          if (typeof renderAdmin === 'function' && isAdmin()) { try { renderAdmin(); } catch (e) {} }
+        }
+
         function showInvoice() {
           const order = currentOrder;
           const itemsHtml = order.items.map(item => `
@@ -3993,7 +4079,7 @@
           const invoiceHtml = `
             <div class="invoice">
               <div class="invoice-header">
-                <div class="invoice-title">${order.refunded ? 'REFUND RECEIPT' : (order.paid ? 'INVOICE' : 'UDHAR BILL')}</div>
+                <div class="invoice-title">${order.refunded ? 'REFUND RECEIPT' : (order.paid ? 'INVOICE' : (qrState(order) === 'pending' ? 'ORDER SLIP' : (qrState(order) === 'rejected' ? 'ORDER CANCELLED' : 'UDHAR BILL')))}</div>
                 <div class="invoice-subtitle">Kharel Nirmad Samagri Udhyog</div>
               </div>
 
@@ -4035,6 +4121,16 @@
               <div class="payment-status">
                 ✓ Payment Successful - Paid via ${formatPaymentMethod(order)}
               </div>
+              ` : qrState(order) === 'pending' ? `
+              <div class="payment-status" style="background: #fff8e1; border-color: #ffe082; color: #b26a00;">
+                ⏳ Payment Pending Verification - Rs ${order.total.toLocaleString()}<br>
+                <span style="font-weight: 400; font-size: 13px;">We will confirm once your payment is received. This page will show PAID after confirmation.</span>
+              </div>
+              ` : qrState(order) === 'rejected' ? `
+              <div class="payment-status" style="background: #fdecea; border-color: #f5c6c0; color: #c0392b;">
+                ✗ Payment Not Confirmed${order.rejectReason ? ' - ' + escapeHtml(order.rejectReason) : ''}<br>
+                <span style="font-weight: 400; font-size: 13px;">Please contact us on ${escapeHtml(PHONE)} if you have already paid.</span>
+              </div>
               ` : `
               <div class="payment-status" style="background: #fff3e0; border-color: #ffe0b2; color: #f57c00;">
                 🤝 UDHAR - Rs ${order.total.toLocaleString()} Due - Not Paid Yet
@@ -4072,7 +4168,7 @@
                     <span>Rs ${order.total.toLocaleString()}</span>
                   </div>
                 </div>
-                ${!order.paid ? `
+                ${(!order.paid && !qrState(order)) ? `
                 <div class="summary-total" style="color: #f57c00; border-top: 2px solid #ffe0b2;">
                   <div style="display: flex; justify-content: space-between;">
                     <span>Amount Due (Udhar):</span>
@@ -4173,6 +4269,8 @@
               <div class="r-hr"></div>
               ${order.refunded ? `<div class="r-center r-bold">REFUNDED</div>`
                 : order.paid ? `<div class="r-center r-bold">PAID - ${escapeHtml(formatPaymentMethod(order))}</div>`
+                : qrState(order) === 'pending' ? `<div class="r-center r-bold">PAYMENT PENDING VERIFICATION</div>`
+                : qrState(order) === 'rejected' ? `<div class="r-center r-bold">PAYMENT NOT CONFIRMED</div>`
                 : `<div class="r-center r-bold">UDHAR DUE: Rs ${order.total.toLocaleString()}</div>`}
               <div class="r-hr"></div>
               <div class="r-center">Thank you for your business!</div>
@@ -4194,7 +4292,7 @@
         }
 
         function buildInvoiceText(order) {
-          let text = order.paid ? 'INVOICE\n' : 'UDHAR BILL\n';
+          let text = order.paid ? 'INVOICE\n' : (qrState(order) === 'pending' ? 'ORDER SLIP (PAYMENT PENDING VERIFICATION)\n' : (qrState(order) === 'rejected' ? 'ORDER CANCELLED (PAYMENT NOT CONFIRMED)\n' : 'UDHAR BILL\n'));
           text += 'Kharel Nirmad Samagri Udhyog\n';
           text += '================================\n\n';
           text += `Invoice #: ${order.invoiceNumber || order.id}\n`;
@@ -4216,7 +4314,7 @@
             text += `${l.label}: ${formatSummaryValue(l.value)}\n`;
           });
           text += `TOTAL: Rs ${order.total}\n`;
-          if (!order.paid) {
+          if (!order.paid && !qrState(order)) {
             text += `AMOUNT DUE (UDHAR): Rs ${order.total}\n`;
           }
           text += '================================\n';
@@ -4243,6 +4341,8 @@
         function buildCustomerInvoiceMessage(order) {
           const greeting = order.paid
             ? `Hello ${order.name}, your order has been confirmed! Here is your invoice:\n\n`
+            : qrState(order) === 'pending'
+            ? `Hello ${order.name}, we have received your order. It will be confirmed once your payment is verified:\n\n`
             : `Hello ${order.name}, your order has been confirmed. Here is your bill:\n\n`;
           return greeting + buildInvoiceText(order);
         }
@@ -4309,7 +4409,10 @@
             return;
           }
 
-          const html = [...list].reverse().map(order => `
+          const pendingN = canAccess('orders') ? list.filter(o => qrState(o) === 'pending').length : 0;
+          const pendingBanner = pendingN > 0 ? `<div style="background:#fff8e1; border:1px solid #ffe082; color:#b26a00; padding:12px 14px; border-radius:8px; margin-bottom:12px; font-weight:600; font-size:14px;">⏳ ${pendingN} payment${pendingN > 1 ? 's' : ''} waiting for verification - check your eSewa/Khalti/bank SMS, then tap "Confirm Payment".</div>` : '';
+
+          const html = pendingBanner + [...list].reverse().map(order => `
             <div class="order-card">
               <div class="order-header">
                 <div>
@@ -4318,8 +4421,8 @@
                 </div>
                 <div>
                   <div style="font-size: 18px; font-weight: 700; color: #2d6d48; text-align: right;">Rs ${order.total.toLocaleString()}</div>
-                  <span class="order-status ${order.refunded ? 'status-refunded' : (order.partiallyRefunded ? 'status-refunded' : (order.paid ? 'status-paid' : 'status-pending'))}">
-                    ${order.refunded ? '↩️ REFUNDED' : (order.partiallyRefunded ? '↩️ PARTIALLY REFUNDED' : (order.paid ? '✓ PAID' : (order.paymentMethod === 'udhar' ? '🤝 UDHAR (Due)' : '⏳ PENDING')))}
+                  <span class="order-status ${order.refunded ? 'status-refunded' : (order.partiallyRefunded ? 'status-refunded' : (order.paid ? 'status-paid' : 'status-pending'))}" ${qrState(order) === 'rejected' ? 'style="background:#fdecea; color:#c0392b;"' : ''}>
+                    ${order.refunded ? '↩️ REFUNDED' : (order.partiallyRefunded ? '↩️ PARTIALLY REFUNDED' : (order.paid ? '✓ PAID' : (qrState(order) === 'pending' ? '⏳ VERIFYING PAYMENT' : (qrState(order) === 'rejected' ? '✗ PAYMENT REJECTED' : (order.paymentMethod === 'udhar' ? '🤝 UDHAR (Due)' : '⏳ PENDING')))))}
                   </span>
                 </div>
               </div>
@@ -4332,7 +4435,8 @@
               </div>
 
               <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                <button class="checkout-btn" onclick="showOrderInvoice('${order.id}')" style="padding: 8px 16px; font-size: 13px; width: auto; flex: 1; ${!order.paid && !order.refunded ? 'background: #f57c00;' : ''}">${order.refunded ? 'View Refund' : (order.paid ? 'View Invoice' : 'View Udhar Bill')}</button>
+                <button class="checkout-btn" onclick="showOrderInvoice('${order.id}')" style="padding: 8px 16px; font-size: 13px; width: auto; flex: 1; ${!order.paid && !order.refunded ? 'background: #f57c00;' : ''}">${order.refunded ? 'View Refund' : (order.paid ? 'View Invoice' : (qrState(order) ? 'View Order' : 'View Udhar Bill'))}</button>
+                ${(qrState(order) === 'pending' && canAccess('orders')) ? `<button class="checkout-btn" onclick="confirmQRPayment('${order.id}')" style="padding: 8px 16px; font-size: 13px; width: auto; flex: 1; background: #2d6d48;">✓ Confirm Payment</button><button class="checkout-btn" onclick="rejectQRPayment('${order.id}')" style="padding: 8px 16px; font-size: 13px; width: auto; flex: 1; background: #c0392b;">✗ Reject</button>` : ''}
                 ${(!order.paid && !order.refunded && order.paymentMethod === 'udhar' && isAdmin()) ? `<button class="checkout-btn" onclick="payUdharOrder('${order.id}')" style="padding: 8px 16px; font-size: 13px; width: auto; flex: 1; background: #2d6d48;">💰 Pay Now</button>` : ''}
                 ${(order.paid && !order.refunded && !(order.refunds && order.refunds.length) && isAdmin()) ? `<button class="checkout-btn" onclick="refundOrder('${order.id}')" style="padding: 8px 16px; font-size: 13px; width: auto; flex: 1; background: #c0392b;">↩️ Refund</button>` : ''}
               </div>
@@ -4876,7 +4980,7 @@
             : allOrdersInPeriod.filter(o => (o.createdBy || 'Unknown') === salesEmployeeFilter);
 
           const paidOrders = ordersInPeriod.filter(o => o.paid && !o.refunded);
-          const dueOrders = ordersInPeriod.filter(o => !o.paid && !o.refunded);
+          const dueOrders = ordersInPeriod.filter(o => !o.paid && !o.refunded && !qrState(o));
           const fullyRefundedOrders = ordersInPeriod.filter(o => o.refunded);
           const partiallyRefundedOrders = ordersInPeriod.filter(o => o.partiallyRefunded);
 
@@ -4936,7 +5040,7 @@
             if (!employeeBreakdown[emp]) employeeBreakdown[emp] = { orders: 0, sales: 0, due: 0 };
             employeeBreakdown[emp].orders += 1;
             if (o.paid && !o.refunded) employeeBreakdown[emp].sales += o.total;
-            if (!o.paid && !o.refunded) employeeBreakdown[emp].due += o.total;
+            if (!o.paid && !o.refunded && !qrState(o)) employeeBreakdown[emp].due += o.total;
           });
 
           return {
@@ -4976,7 +5080,7 @@
                   </div>
                   <div style="text-align:right;">
                     <div style="font-size:16px; font-weight:700; color:#2d6d48;">Rs ${(o.total || 0).toLocaleString()}</div>
-                    ${o.deleted ? `<div style="font-size:11px; color:#c0392b; font-weight:600; margin-top:4px;">🗑️ DELETED by ${escapeHtml(o.deletedBy || '')} @ ${escapeHtml(o.deletedAt || '')}</div>` : `<span class="order-status ${o.refunded ? 'status-refunded' : (o.paid ? 'status-paid' : 'status-pending')}" style="margin-top:4px; display:inline-block;">${o.refunded ? '↩️ REFUNDED' : (o.paid ? '✓ PAID' : (o.paymentMethod === 'udhar' ? '🤝 UDHAR (Due)' : '⏳ PENDING'))}</span>`}
+                    ${o.deleted ? `<div style="font-size:11px; color:#c0392b; font-weight:600; margin-top:4px;">🗑️ DELETED by ${escapeHtml(o.deletedBy || '')} @ ${escapeHtml(o.deletedAt || '')}</div>` : `<span class="order-status ${o.refunded ? 'status-refunded' : (o.paid ? 'status-paid' : 'status-pending')}" style="margin-top:4px; display:inline-block;">${o.refunded ? '↩️ REFUNDED' : (o.paid ? '✓ PAID' : (qrState(o) === 'pending' ? '⏳ VERIFYING PAYMENT' : (qrState(o) === 'rejected' ? '✗ PAYMENT REJECTED' : (o.paymentMethod === 'udhar' ? '🤝 UDHAR (Due)' : '⏳ PENDING'))))}</span>`}
                   </div>
                 </div>
                 <button class="checkout-btn" style="width:auto; padding:6px 14px; font-size:12px; margin-top:8px;" onclick="showOrderInvoice('${o.id}')">👁️ View Invoice</button>
@@ -6030,7 +6134,7 @@
               <td style="padding: 10px; font-size: 12px; border-bottom: 1px solid #eee;">${order.phone}</td>
               <td style="padding: 10px; font-size: 12px; border-bottom: 1px solid #eee;">Rs ${order.total.toLocaleString()}</td>
               <td style="padding: 10px; font-size: 12px; border-bottom: 1px solid #eee;">${formatPaymentMethod(order)}</td>
-              <td style="padding: 10px; font-size: 12px; border-bottom: 1px solid #eee; font-weight: 600; color: ${order.refunded ? '#c0392b' : (order.paid ? '#155724' : '#f57c00')};">${order.refunded ? '↩️ REFUNDED' : (order.paid ? '✓ PAID' : (order.paymentMethod === 'udhar' ? '🤝 UDHAR DUE' : 'PENDING'))}</td>
+              <td style="padding: 10px; font-size: 12px; border-bottom: 1px solid #eee; font-weight: 600; color: ${order.refunded ? '#c0392b' : (order.paid ? '#155724' : '#f57c00')};">${order.refunded ? '↩️ REFUNDED' : (order.paid ? '✓ PAID' : (qrState(order) === 'pending' ? '⏳ VERIFYING' : (qrState(order) === 'rejected' ? '✗ REJECTED' : (order.paymentMethod === 'udhar' ? '🤝 UDHAR DUE' : 'PENDING'))))}</td>
               <td style="padding: 10px; font-size: 12px; border-bottom: 1px solid #eee;">${order.createdBy || '-'}${order.paidBy && order.paidBy !== order.createdBy ? ` / paid: ${order.paidBy}` : ''}</td>
               <td style="padding: 10px; font-size: 12px; border-bottom: 1px solid #eee;">
                 <button style="background: #0066cc; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 11px;" onclick="editOrderAdmin('${order.id}')">✏️ Edit</button>
@@ -9237,8 +9341,9 @@
             order.paidBy = currentUser.username;
             order.status = 'paid';
             order.dueAmount = 0;
+            if (!order.invoiceNumber) order.invoiceNumber = generateInvoiceNumber();
           } else if (!nowPaid) {
-            order.status = order.paymentMethod === 'udhar' ? 'udhar' : 'pending';
+            if (order.status !== 'pending_verification' && order.status !== 'rejected') order.status = order.paymentMethod === 'udhar' ? 'udhar' : 'pending';
             order.dueAmount = order.total;
           } else {
             order.dueAmount = 0;
@@ -10870,7 +10975,7 @@
           } else if (isStaff()) {
             renderMyAccount();
           }
-          el.textContent = '✅ Data synced - refreshed';
+          { const pn = (typeof isStaff === 'function' && isStaff() && canAccess('orders')) ? pendingVerificationCount() : 0; el.textContent = pn > 0 ? `✅ Synced - ${pn} payment${pn > 1 ? 's' : ''} waiting for verification` : '✅ Data synced - refreshed'; }
           setTimeout(() => el.remove(), 3000);
         }, 2000);
       }
