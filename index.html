@@ -57,9 +57,15 @@
         }
         
         // Verify password
-        async function verifyPassword(plainPassword, hashedPassword) {
+        async function verifyPassword(plainPassword, storedPassword) {
           try {
-            return await bcrypt.compare(plainPassword, hashedPassword);
+            // Hashed password (bcrypt) -> compare as hash.
+            if (typeof storedPassword === 'string' && /^\$2[aby]\$/.test(storedPassword)) {
+              return await bcrypt.compare(plainPassword, storedPassword);
+            }
+            // Otherwise the account stores a plain-text password (default accounts, and any
+            // password set or reset from the Admin screen) -> compare directly.
+            return typeof storedPassword === 'string' && plainPassword === storedPassword;
           } catch (e) {
             console.error('Error verifying password:', e);
             return false;
@@ -759,59 +765,6 @@
           #printArea { display: block !important; }
           #printArea .invoice { box-shadow: none; padding: 0; max-width: 100%; }
         }
-    
-        // ============================================================
-        // 🔒 SECURITY FUNCTIONS - Password Hashing & Encryption
-        // ============================================================
-        
-        const ENCRYPTION_KEY = 'kharel-secure-2026-change-this-key-12345'; // ⚠️ CHANGE THIS
-        
-        // Encrypt sensitive data
-        function setSensitiveData(key, data) {
-          try {
-            const encrypted = CryptoJS.AES.encrypt(JSON.stringify(data), ENCRYPTION_KEY).toString();
-            localStorage.setItem(key, encrypted);
-            return true;
-          } catch (e) {
-            console.error(`Encryption error for ${key}:`, e);
-            return false;
-          }
-        }
-        
-        // Decrypt sensitive data
-        function getSensitiveData(key) {
-          try {
-            const encrypted = localStorage.getItem(key);
-            if (!encrypted) return null;
-            const decrypted = CryptoJS.AES.decrypt(encrypted, ENCRYPTION_KEY).toString(CryptoJS.enc.Utf8);
-            return JSON.parse(decrypted);
-          } catch (e) {
-            console.error(`Decryption error for ${key}:`, e);
-            return null;
-          }
-        }
-        
-        // Hash password
-        async function hashPassword(plainPassword) {
-          try {
-            return await bcrypt.hash(plainPassword, 10);
-          } catch (e) {
-            console.error('Error hashing password:', e);
-            return null;
-          }
-        }
-        
-        // Verify password
-        async function verifyPassword(plainPassword, hashedPassword) {
-          try {
-            return await bcrypt.compare(plainPassword, hashedPassword);
-          } catch (e) {
-            console.error('Error verifying password:', e);
-            return false;
-          }
-        }
-
-        <style>
         /* ===================== Home Hero / Category Redesign ===================== */
         .promo-strip { background: linear-gradient(90deg,#c0392b,#1a472a); color:#fff; text-align:center; font-size:12px; padding:6px 10px; }
         .hero-banner {
