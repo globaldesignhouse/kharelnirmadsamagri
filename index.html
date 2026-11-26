@@ -1648,15 +1648,15 @@
           { key: 'pickup',  label: 'Self Pickup',                fee: 0 },
           { key: 'local',   label: 'Local Delivery',             fee: 500 },
           { key: 'outside', label: 'Outside Area Delivery',      fee: 1000 },
-          { key: 'custom',  label: 'Custom Amount (staff only)', fee: null }
+          { key: 'custom',  label: 'Manual Amount',              fee: null }
         ];
 
         // Current choices on the checkout screen. cartSig remembers which cart they belong to,
         // so a new/changed cart starts again with no discount and self pickup.
-        let checkoutAdjust = { cartSig: '', discType: 'none', discValue: 0, transportKey: 'pickup', transportCustom: 0 };
+        let checkoutAdjust = { cartSig: '', discType: 'none', discValue: 0, transportKey: 'pickup', transportCustom: 0, transportCost: 0 };
 
         function resetCheckoutAdjust() {
-          checkoutAdjust = { cartSig: '', discType: 'none', discValue: 0, transportKey: 'pickup', transportCustom: 0 };
+          checkoutAdjust = { cartSig: '', discType: 'none', discValue: 0, transportKey: 'pickup', transportCustom: 0, transportCost: 0 };
         }
 
         // Single place where an order's money is worked out:
@@ -3272,14 +3272,15 @@
         function getCheckoutTotals() {
           const itemsTotal = cart.reduce((sum, item) => sum + item.qty * item.price, 0);
           let opt = TRANSPORT_OPTIONS.find(o => o.key === checkoutAdjust.transportKey) || TRANSPORT_OPTIONS[0];
-          if (opt.fee === null && !isStaff()) opt = TRANSPORT_OPTIONS[0]; // custom amount is staff only
           const fee = opt.fee === null ? checkoutAdjust.transportCustom : opt.fee;
           const discType = checkoutAdjust.discType;
           const t = computeOrderTotals(itemsTotal, discType, checkoutAdjust.discValue, fee);
           t.discType = discType;
           t.discValue = discType === 'percent' ? Math.min(Math.max(parseFloat(checkoutAdjust.discValue) || 0, 0), 100)
                       : discType === 'fixed' ? t.discountAmount : 0;
-          t.transportLabel = opt.label.replace(' (staff only)', '');
+          t.transportLabel = opt.label;
+          // Company's own transport expense (what the company really pays). Internal: staff only, never added to the customer's bill.
+          t.transportCost = isStaff() ? Math.max(Math.round(parseFloat(checkoutAdjust.transportCost) || 0), 0) : 0;
           return t;
         }
 
@@ -3332,6 +3333,9 @@
           const customRow = document.getElementById('checkoutTransportCustomRow');
           if (customRow) customRow.style.display = checkoutAdjust.transportKey === 'custom' ? 'block' : 'none';
 
+          const tCost = document.getElementById('checkoutTransportCost');
+          if (tCost) checkoutAdjust.transportCost = parseFloat(tCost.value) || 0;
+
           const dSel = document.getElementById('checkoutDiscType');
           if (dSel) checkoutAdjust.discType = dSel.value;
           const dVal = document.getElementById('checkoutDiscValue');
@@ -3376,7 +3380,6 @@
           checkoutShowTax = false; // reset for each new checkout - tax breakdown is hidden unless staff turns it on below
           const totals = getCheckoutTotals();
           const transportOptionsHtml = TRANSPORT_OPTIONS
-            .filter(o => o.fee !== null || isStaff())
             .map(o => `<option value="${o.key}" ${checkoutAdjust.transportKey === o.key ? 'selected' : ''}>${o.fee === null ? o.label : `${o.label} - ${o.fee === 0 ? 'Free' : 'Rs ' + o.fee.toLocaleString()}`}</option>`)
             .join('');
 
@@ -3399,9 +3402,14 @@
               <select class="form-input" id="checkoutTransport" onchange="onCheckoutAdjustChange()">
                 ${transportOptionsHtml}
               </select>
-              <div id="checkoutTransportCustomRow" style="margin-top: 8px; display: ${checkoutAdjust.transportKey === 'custom' && isStaff() ? 'block' : 'none'};">
+              <div id="checkoutTransportCustomRow" style="margin-top: 8px; display: ${checkoutAdjust.transportKey === 'custom' ? 'block' : 'none'};">
                 <input type="number" class="form-input" id="checkoutTransportCustom" min="0" step="1" placeholder="Transport charge (Rs)" value="${checkoutAdjust.transportCustom || ''}" oninput="onCheckoutAdjustChange()">
               </div>
+              ${isStaff() ? `
+              <label style="display: block; font-weight: 600; margin: 14px 0 4px;">🧾 Transport Cost - company expense (Rs)</label>
+              <input type="number" class="form-input" id="checkoutTransportCost" min="0" step="1" placeholder="0" value="${checkoutAdjust.transportCost || ''}" oninput="onCheckoutAdjustChange()">
+              <div style="font-size: 12px; color: #888; margin-top: 4px;">What the company actually pays for transport. Not shown to the customer and not added to the bill - it is deducted from Sales in the Sales Report.</div>
+              ` : ''}
               <label style="display: block; font-weight: 600; margin: 14px 0 6px;">🏷️ Discount</label>
               <select class="form-input" id="checkoutDiscType" onchange="onCheckoutAdjustChange()">
                 <option value="none" ${checkoutAdjust.discType === 'none' ? 'selected' : ''}>No discount</option>
@@ -3553,6 +3561,7 @@
             discountAmount: t.discountAmount,
             transportLabel: t.transportAmount > 0 ? t.transportLabel : '',
             transportAmount: t.transportAmount,
+            transportCost: t.transportCost,
             subtotal: t.subtotal,
             gst: t.gst,
             total: t.total,
@@ -4872,7 +4881,12 @@
             });
           });
 
-          const netSales = grossSales - refundsInPeriodAmount;
+          // Transport cost = the company's own transport expense on paid orders in this period.
+          // It is deducted from sales: Net Sales = Gross Sales - Refunds - Transport Cost.
+          const transportRows = paidOrders.filter(o => (o.transportCost || 0) > 0 || (o.transportAmount || 0) > 0);
+          const transportCostTotal = paidOrders.reduce((s, o) => s + (o.transportCost || 0), 0);
+          const transportChargedTotal = paidOrders.reduce((s, o) => s + (o.transportAmount || 0), 0);
+          const netSales = grossSales - refundsInPeriodAmount - transportCostTotal;
 
           // Sales by employee - always computed on the full (unfiltered by employee) period
           // so the report shows a fair comparison across employees regardless of the filter.
@@ -4888,6 +4902,7 @@
           return {
             start, end, ordersInPeriod, paidOrders, dueOrders, fullyRefundedOrders, partiallyRefundedOrders,
             grossSales, dueAmount, paymentBreakdown, itemSummary, refundsInPeriodAmount, refundRows, netSales,
+            transportRows, transportCostTotal, transportChargedTotal,
             employeeBreakdown
           };
         }
@@ -4976,6 +4991,15 @@
               <td style="padding:10px; border-bottom:1px solid #eee; font-size:13px; text-align:right; color:#f57c00; font-weight:600;">Rs ${o.total.toLocaleString()}</td>
             </tr>
           `).join('') : '';
+
+          const transportRowsHtml = d.transportRows.map(o => `
+            <tr>
+              <td style="padding:10px; border-bottom:1px solid #eee; font-size:13px;">${o.invoiceNumber || o.id}</td>
+              <td style="padding:10px; border-bottom:1px solid #eee; font-size:13px;">${o.name}</td>
+              <td style="padding:10px; border-bottom:1px solid #eee; font-size:13px; text-align:right;">Rs ${(o.transportAmount || 0).toLocaleString()}</td>
+              <td style="padding:10px; border-bottom:1px solid #eee; font-size:13px; text-align:right; color:#1565c0; font-weight:600;">Rs ${(o.transportCost || 0).toLocaleString()}</td>
+            </tr>
+          `).join('');
 
           const refundRowsHtml = d.refundRows.length ? d.refundRows.map(({order, refund}) => {
             const typeLabel = { full: 'Full Refund', deducted: 'Refund (Deduction)', partial: 'Partial Refund' }[refund.type] || 'Refund';
@@ -5112,12 +5136,16 @@
                   <div class="sales-stat-label">Gross Sales (Paid)</div>
                   <div class="sales-stat-value" style="color:#155724;">Rs ${d.grossSales.toLocaleString()}</div>
                 </div>
+                <div class="sales-stat-card" style="background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%); border-left-color:#1565c0;">
+                  <div class="sales-stat-label">Transport Cost (Expense)</div>
+                  <div class="sales-stat-value" style="color:#1565c0;">Rs ${d.transportCostTotal.toLocaleString()}</div>
+                </div>
                 <div class="sales-stat-card" style="background: linear-gradient(135deg, #fdecea 0%, #f5c6c0 100%); border-left-color:#c0392b;">
                   <div class="sales-stat-label">Refunds (${d.refundRows.length})</div>
                   <div class="sales-stat-value" style="color:#c0392b;">Rs ${d.refundsInPeriodAmount.toLocaleString()}</div>
                 </div>
                 <div class="sales-stat-card" style="background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%); border-left-color:#4caf50;">
-                  <div class="sales-stat-label">Net Sales</div>
+                  <div class="sales-stat-label">Net Sales (after Transport Cost)</div>
                   <div class="sales-stat-value" style="color:#4caf50;">Rs ${d.netSales.toLocaleString()}</div>
                 </div>
                 <div class="sales-stat-card" style="background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%); border-left-color:#f57c00;">
@@ -5143,6 +5171,16 @@
                 <thead><tr><th>Item</th><th style="text-align:center;">Qty Sold</th><th style="text-align:right;">Revenue</th></tr></thead>
                 <tbody>${itemRowsHtml}</tbody>
               </table>
+
+              <h3 style="margin: 10px 0 12px; font-size: 15px; color:#1565c0; border-bottom: 2px solid #1565c0; padding-bottom: 8px;">🚚 Transport (Charged vs Company Cost)</h3>
+              ${d.transportRows.length ? `
+              <table class="invoice-table" style="margin-bottom:10px;">
+                <thead><tr><th>Invoice</th><th>Customer</th><th style="text-align:right;">Charged to Customer</th><th style="text-align:right;">Company Cost</th></tr></thead>
+                <tbody>${transportRowsHtml}</tbody>
+                <tfoot><tr><td colspan="2" style="padding:10px; font-weight:700;">Total</td><td style="padding:10px; text-align:right; font-weight:700;">Rs ${d.transportChargedTotal.toLocaleString()}</td><td style="padding:10px; text-align:right; font-weight:700; color:#1565c0;">Rs ${d.transportCostTotal.toLocaleString()}</td></tr></tfoot>
+              </table>
+              <p style="font-size:12px; color:#888; margin-bottom:25px;">Company Cost is deducted from Gross Sales to get Net Sales.</p>
+              ` : `<p style="font-size:13px; color:#888; margin-bottom:25px;">No transport on paid orders in this period.</p>`}
 
               <h3 style="margin: 10px 0 12px; font-size: 15px; color:#f57c00; border-bottom: 2px solid #f57c00; padding-bottom: 8px;">🤝 Udhar / Due Bills in this Period</h3>
               ${d.dueOrders.length ? `
@@ -5197,8 +5235,9 @@
           return [
             ['Total Orders', d.ordersInPeriod.length],
             ['Gross Sales (Paid)', d.grossSales],
+            ['Transport Cost (Expense)', d.transportCostTotal],
             ['Refunds', d.refundsInPeriodAmount],
-            ['Net Sales', d.netSales],
+            ['Net Sales (after Transport Cost)', d.netSales],
             ['Udhar / Due', d.dueAmount]
           ];
         }
@@ -9008,6 +9047,12 @@
               </div>
 
               <div style="margin-bottom: 15px;">
+                <label style="display: block; font-weight: 600; margin-bottom: 6px;">🧾 Transport Cost - company expense (Rs)</label>
+                <input type="number" class="form-input" id="editTransportCost" min="0" step="1" placeholder="0" value="${order.transportCost || ''}">
+                <div style="margin-top: 4px; font-size: 12px; color: #888;">Not shown to the customer. Deducted from Sales in the Sales Report.</div>
+              </div>
+
+              <div style="margin-bottom: 15px;">
                 <label style="display: block; font-weight: 600; margin-bottom: 6px;">Payment Method</label>
                 <select class="form-input" id="editPaymentMethod">
                   ${paymentOptions.map(m => `<option value="${m}" ${(cameFromChooser ? adminSettlePaymentMethod === m : order.paymentMethod === m) ? 'selected' : ''}>${m.charAt(0).toUpperCase() + m.slice(1)}</option>`).join('')}
@@ -9134,6 +9179,8 @@
           order.notes = document.getElementById('editNotes').value.trim();
           order.items = adminEditItems.map(i => ({ ...i }));
           order.paymentMethod = document.getElementById('editPaymentMethod').value;
+          const editTransportCostEl = document.getElementById('editTransportCost');
+          if (editTransportCostEl) order.transportCost = Math.max(Math.round(parseFloat(editTransportCostEl.value) || 0), 0);
 
           adjustStockForBillChange(originalItems, order.items);
           renderProducts();
